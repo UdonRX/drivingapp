@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#0b1018" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Zen Drive" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>Zen Drive</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main id="app" class="app" aria-label="Zen Drive">
+    <canvas id="driveCanvas" aria-label="一人称ドライブ画面"></canvas>
+
+    <div id="hud" class="hud is-hidden">
+      <div class="hud-top">
+        <button id="pauseBtn" class="icon-btn" aria-label="一時停止">Ⅱ</button>
+        <div class="drive-status">
+          <span id="environmentLabel">MOUNTAIN</span>
+          <span class="dot">•</span>
+          <span id="weatherLabel">CLEAR</span>
+        </div>
+        <button id="resetBtn" class="icon-btn" aria-label="リセット">↻</button>
+      </div>
+
+      <div class="speed-cluster" aria-live="polite">
+        <div class="speed-value"><span id="speedValue">0</span><small>km/h</small></div>
+        <div class="speed-actions">
+          <button id="speedDownBtn" aria-label="減速">−</button>
+          <button id="speedUpBtn" aria-label="加速">＋</button>
+        </div>
+      </div>
+
+      <div class="mode-pill" id="modePill">TILT</div>
+      <button id="soundBtn" class="sound-btn" aria-label="サウンド切替">♪</button>
+
+      <div id="steerButtons" class="steer-buttons is-hidden">
+        <button id="leftBtn" aria-label="左へ">◀</button>
+        <button id="rightBtn" aria-label="右へ">▶</button>
+      </div>
+
+      <div class="bottom-panel">
+        <button id="controlToggleBtn" class="soft-btn">BUTTON</button>
+        <button id="recenterBtn" class="soft-btn">CENTER</button>
+      </div>
+    </div>
+
+    <section id="startScreen" class="start-screen">
+      <div class="brand-block">
+        <p class="eyebrow">ENDLESS FIRST-PERSON DRIVE</p>
+        <h1>ZEN<br />DRIVE</h1>
+        <p class="lead">傾けるだけ。勝敗なし。景色の中を、ずっと走る。</p>
+      </div>
+
+      <div class="setup-card">
+        <div class="setting-group">
+          <div class="setting-label"><span>Environment</span><small>景色</small></div>
+          <div class="segmented four" data-setting="environment">
+            <button class="active" data-value="mountain">山</button>
+            <button data-value="country">田舎</button>
+            <button data-value="city">街</button>
+            <button data-value="coast">海</button>
+          </div>
+        </div>
+
+        <div class="setting-group two-col">
+          <div>
+            <div class="setting-label"><span>Time</span><small>時間</small></div>
+            <div class="segmented three" data-setting="time">
+              <button class="active" data-value="day">昼</button>
+              <button data-value="sunset">夕</button>
+              <button data-value="night">夜</button>
+            </div>
+          </div>
+          <div>
+            <div class="setting-label"><span>Weather</span><small>天候</small></div>
+            <div class="segmented two" data-setting="weather">
+              <button class="active" data-value="clear">晴</button>
+              <button data-value="rain">雨</button>
+            </div>
+            <div class="segmented two compact" data-setting="weather-extra">
+              <button data-value="cloudy">曇</button>
+              <button data-value="fog">霧</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-group inline-row">
+          <div>
+            <div class="setting-label"><span>Control</span><small>操作</small></div>
+            <div class="segmented two" data-setting="control">
+              <button class="active" data-value="tilt">傾き</button>
+              <button data-value="buttons">ボタン</button>
+            </div>
+          </div>
+          <label class="switch-row">
+            <span><b>Endless route</b><small>景色を自動変化</small></span>
+            <input id="endlessToggle" type="checkbox" checked />
+            <i></i>
+          </label>
+        </div>
+
+        <button id="startBtn" class="start-btn">
+          <span id="startBtnTitle">傾きを許可してスタート</span>
+          <small id="startBtnHint">iPhoneは初回のみセンサー許可が必要です</small>
+        </button>
+        <p id="permissionNote" class="permission-note"></p>
+      </div>
+
+      <div class="start-footer">Portrait • PWA • No score • No traffic</div>
+    </section>
+
+    <section id="pauseOverlay" class="pause-overlay is-hidden">
+      <div class="pause-card">
+        <p>ZEN DRIVE</p>
+        <h2>PAUSED</h2>
+        <button id="resumeBtn" class="start-btn"><span>ドライブに戻る</span></button>
+        <button id="backToMenuBtn" class="text-btn">設定へ戻る</button>
+      </div>
+    </section>
+
+    <div id="toast" class="toast" role="status"></div>
+  </main>
+  <script src="/app.js" defer></script>
+</body>
+</html>
