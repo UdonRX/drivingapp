@@ -7,19 +7,20 @@ export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const lerp=(a,b,t)=>a+(b-a)*t;
 export function smoothstep(a,b,x){const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)}
 export function hash(n){return Math.abs(Math.sin(n*12.9898+state.routeSeed)*43758.5453)%1}
-export function roadCurveAt(z){const d=state.distance*.0035+z*.0054;return Math.sin(d*.74)*.2+Math.sin(d*.205+1.7)*.34+Math.sin(d*.057)*.27}
+export function roadCurveAt(z){const d=state.distance*.0032+z*.0049;return Math.sin(d*.71)*.27+Math.sin(d*.19+1.7)*.42+Math.sin(d*.051)*.31}
 export function roadPoint(t,w,h,hor){
   const speedN=clamp(state.speed/138,0,1);
-  const expo=1.36-speedN*.07;
-  const p=Math.pow(clamp(t,0,1),expo);
-  const y=lerp(hor,h*1.035,p);
-  const curve=roadCurveAt((1-t)*1080);
-  const farBend=curve*w*.31*(1-t)*(1-p*.28);
-  const cameraShift=(state.cameraYaw*.115+state.cameraLookX*.045)*w*(1-p*.22);
-  const nearHalf=w*(.615+speedN*.045);
-  const halfWidth=lerp(w*.092,nearHalf,p);
-  const laneBias=halfWidth*.11*p;
-  const lateralShift=state.lateral*w*.175*p;
+  const p=Math.pow(clamp(t,0,1),1.18-speedN*.045);
+  const y=lerp(hor,h*1.025,p);
+  const curve=roadCurveAt((1-t)*980);
+  const farBend=curve*w*.38*Math.pow(1-t,.86)*(1-p*.2);
+  const cameraShift=(state.cameraYaw*.13+state.cameraLookX*.055)*w*(1-p*.18);
+  const farHalf=w*(.145+speedN*.008);
+  const nearHalf=w*(.635+speedN*.035);
+  const widthP=Math.pow(p,.86);
+  const halfWidth=lerp(farHalf,nearHalf,widthP);
+  const laneBias=halfWidth*.08*p;
+  const lateralShift=state.lateral*w*.16*p;
   const center=w*.5+farBend-cameraShift-lateralShift+laneBias;
   return{x:center,y,halfWidth,perspective:p};
 }
