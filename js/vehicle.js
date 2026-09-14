@@ -62,8 +62,8 @@ export function updateVehicle(dt){
   let yawTarget=(v.speed/WHEELBASE)*Math.tan(v.steerAngle)*understeer;
   const roadHeadingError=wrapAngle(road.heading-v.heading);
   const edgeN=clamp((Math.abs(lateralError)-ROAD_HALF_WIDTH*.58)/(ROAD_HALF_WIDTH*.72),0,1);
-  const assist=(direction===0?.20:.07)+edgeN*.52;
-  yawTarget+=roadHeadingError*assist;
+  const assist=(direction!==0?.015:0)+edgeN*.16;
+  yawTarget+=clamp(roadHeadingError*assist,-.045,.045);
   yawTarget-=v.slipAngle*(.12+.18*speedN);
   const yawResponse=2.3+1.7*(1-speedN);
   v.yawRate=damp(v.yawRate,yawTarget,yawResponse,dt);
