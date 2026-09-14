@@ -20,7 +20,7 @@ function drawGuardrails(ctx,w,hor,focal,vx,cameraX,speedN){
   const spacing=10,maxZ=520,offset=state.worldZ%spacing,count=Math.ceil((maxZ+offset)/spacing);
   ctx.save();ctx.lineCap='round';ctx.strokeStyle=state.time==='night'?'rgba(180,190,196,.7)':'rgba(224,227,227,.88)';
   for(const side of[-1,1]){
-    for(let i=count;i>=1;i--){
+    for(let i=count;i>=0;i--){
       let zn=i*spacing-offset,zf=(i+1)*spacing-offset;if(zf<=ROAD_NEAR_Z)continue;zn=Math.max(ROAD_NEAR_Z,zn);
       const sn=focal/zn,sf=focal/zf,gn=1+speedN*Math.max(0,1-zn/115)*.055,gf=1+speedN*Math.max(0,1-zf/115)*.055;
       let xn=vx+(roadCenterWorldX(zn)+side*(ROAD_HALF_WIDTH+.42)-cameraX)*sn,xf=vx+(roadCenterWorldX(zf)+side*(ROAD_HALF_WIDTH+.42)-cameraX)*sf;xn=vx+(xn-vx)*gn;xf=vx+(xf-vx)*gf;
@@ -37,7 +37,7 @@ export function drawRoadside(ctx,w,h,hor){
   drawGuardrails(ctx,w,hor,focal,vx,cameraX,speedN);
 
   const spacing=31,maxZ=760,base=Math.floor(state.worldZ/spacing),count=state.fpsSmoother<43?18:25;
-  for(let j=count;j>=1;j--){
+  for(let j=count;j>=-1;j--){
     const id=base+j,jitter=(hash(id*5.91)-.5)*spacing*.54,z=id*spacing+jitter-state.worldZ;if(z<2.2||z>maxZ)continue;
     const side=hash(id*1.73)>.5?1:-1,spread=2.2+hash(id*8.31)*5.8;
     const scale=focal/z,gain=1+speedN*Math.max(0,1-z/115)*.055;
