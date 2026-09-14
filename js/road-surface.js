@@ -6,13 +6,13 @@ function band(ctx,cf,yf,sf,gf,cn,yn,sn,gn,lateral,width,color){const xf=cf+later
 export function drawRoad(ctx,w,h,hor){
   const focal=focalLengthFor(w),vx=vanishingX(w),cameraX=state.lateral*ROAD_HALF_WIDTH*.54;
   const speedN=clamp(state.speed/138,0,1),offset=state.worldZ%ROAD_SEGMENT_LENGTH;
-  const maxI=Math.ceil((ROAD_DRAW_DISTANCE+offset)/ROAD_SEGMENT_LENGTH),step=state.fpsSmoother<43?2:1;
+  const maxI=Math.ceil((ROAD_DRAW_DISTANCE+offset)/ROAD_SEGMENT_LENGTH),step=state.fpsSmoother<43?2:1,startI=maxI-(maxI%step);
   const roadColor=state.time==='night'?'#171b1f':state.weather==='rain'?'#30363a':'#34383b';
   const shoulder=state.environment==='coast'?'#77746d':state.environment==='city'?'#464b4e':'#565a50';
   const edgeColor=state.time==='night'?'rgba(237,241,239,.88)':'rgba(246,246,240,.96)';
   const laneColor='rgba(246,246,241,.9)',centerColor='rgba(225,157,55,.96)';
 
-  for(let i=maxI;i>=0;i-=step){
+  for(let i=startI;i>=0;i-=step){
     let zNear=i*ROAD_SEGMENT_LENGTH-offset,zFar=(i+step)*ROAD_SEGMENT_LENGTH-offset;
     if(zFar<=ROAD_NEAR_Z||zNear>ROAD_DRAW_DISTANCE)continue;
     zNear=Math.max(ROAD_NEAR_Z,zNear);zFar=Math.min(ROAD_DRAW_DISTANCE,zFar);
@@ -40,8 +40,6 @@ export function drawRoad(ctx,w,h,hor){
       band(ctx,cf,yf,sf,gf,cn,yn,sn,gn, ROAD_HALF_WIDTH*.5,.045,laneColor);
     }
 
-    // Sparse longitudinal wear replaces the old regular cross-banding. Because the
-    // marks live on world segments, each one accelerates toward the viewer as z falls.
     const wear=hash(segId*3.17);
     if(wear>.73&&zNear<330){
       const lateral=(hash(segId*7.31)-.5)*ROAD_HALF_WIDTH*1.22;
