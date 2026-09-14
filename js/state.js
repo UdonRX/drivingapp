@@ -34,6 +34,7 @@ export const state={
   worldTime:0,
   routeSeed:137.731,
   motionMath:'fallback',
+  proceduralEngine:'fallback',
   input:{left:false,right:false},
   vehicle:{
     x:0,y:0,z:0,
@@ -65,7 +66,7 @@ export const state={
   camera:{
     x:0,y:1.35,z:0,
     targetX:0,targetY:1.35,targetZ:60,
-    yaw:0,pitch:0,roll:0,fov:59,
+    yaw:0,pitch:0,roll:0,fov:57,
     headX:0,headXV:0,
     headY:0,headYV:0,
     headZ:0,headZV:0,
@@ -73,7 +74,15 @@ export const state={
     headYaw:0,headYawV:0,
     lookBias:0
   },
-  world:{feature:null,featureAmount:0},
+  world:{
+    feature:null,
+    featureAmount:0,
+    featureLocal:0,
+    featureExit:0,
+    tunnelLight:0,
+    tunnelExposure:1,
+    exitFlash:0
+  },
   performance:{fps:60,quality:1,lowFpsTime:0,highFpsTime:0},
   audio:null
 };

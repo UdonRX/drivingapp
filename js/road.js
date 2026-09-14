@@ -1,5 +1,24 @@
 import{state,clamp,smoothstep}from'./state.js';
 
+let noise2D=null;
+function mulberry32(seed){
+  let a=seed>>>0;
+  return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}
+}
+export function initRoadNoise(seed=137.731){
+  const random=mulberry32(Math.floor(seed*100000)>>>0);
+  import('https://cdn.jsdelivr.net/npm/simplex-noise@4.0.3/+esm').then(mod=>{
+    noise2D=mod.createNoise2D(random);state.proceduralEngine='simplex-noise';
+  }).catch(err=>{console.warn('[ZenDrive] simplex-noise unavailable; using coherent fallback',err);state.proceduralEngine='fallback'});
+}
+function coherentNoise(x,channel=0){
+  if(noise2D)return noise2D(x,channel*17.173);
+  return Math.sin(x*1.37+channel*2.91)*.56+Math.sin(x*.47+channel*5.33)*.29+Math.sin(x*2.83+channel*.71)*.15;
+}
+function roadMicroProfile(z){
+  return coherentNoise(z*.035,0)*.0062+coherentNoise(z*.095,1)*.0036+coherentNoise(z*.24,2)*.0018;
+}
+
 export const ROAD_HALF_WIDTH=4.55;
 export const ROAD_SHOULDER=1.05;
 export const ROAD_NEAR=4.2;
@@ -22,9 +41,16 @@ function explicitHill(z){
 }
 function featureFor(z){
   const cycle=5600,local=((z%cycle)+cycle)%cycle;
-  if(local>1800&&local<2280){const amount=Math.min(smoothstep(1800,1900,local),1-smoothstep(2180,2280,local));return{type:'bridge',amount,local};}
-  if(local>3650&&local<4230){const amount=Math.min(smoothstep(3650,3760,local),1-smoothstep(4120,4230,local));return{type:'tunnel',amount,local};}
-  return{type:null,amount:0,local};
+  if(local>1800&&local<2280){
+    const amount=Math.min(smoothstep(1800,1900,local),1-smoothstep(2180,2280,local));
+    return{type:'bridge',amount,local,exit:0};
+  }
+  if(local>3650&&local<4230){
+    const amount=Math.min(smoothstep(3650,3760,local),1-smoothstep(4120,4230,local));
+    const exit=smoothstep(4010,4230,local);
+    return{type:'tunnel',amount,local,exit};
+  }
+  return{type:null,amount:0,local,exit:0};
 }
 
 export function roadX(z){return baseX(z)}
@@ -34,7 +60,7 @@ export function roadBank(z){
   const wave=Math.sin((z+state.routeSeed)/760)*.012;
   return clamp(-curvature*.85+wave,-.075,.075);
 }
-export function roadBump(z){return Math.sin(z*.72)*.012+Math.sin(z*1.93+1.7)*.006+Math.sin(z*.17+.4)*.009}
+export function roadBump(z){return roadMicroProfile(z)}
 
 export function sampleRoad(z,out={}){
   const h=2.5,x=roadX(z),y=roadY(z),x0=roadX(z-h),x1=roadX(z+h),y0=roadY(z-h),y1=roadY(z+h);
@@ -46,7 +72,7 @@ export function sampleRoad(z,out={}){
   out.pitch=Math.atan2(dy,Math.sqrt(1+dx*dx));
   out.bank=roadBank(z);
   out.curvature=ddx/Math.pow(1+dx*dx,1.5);
-  out.feature=feature.type;out.featureAmount=feature.amount;out.featureLocal=feature.local;
+  out.feature=feature.type;out.featureAmount=feature.amount;out.featureLocal=feature.local;out.featureExit=feature.exit;
   return out;
 }
 
