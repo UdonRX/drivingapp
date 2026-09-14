@@ -14,7 +14,9 @@ export function updateHud(){
   root.setProperty('--cockpit-pitch',`${clamp(v.pitch-c.pitch,-.045,.045)}`);
   root.setProperty('--tunnel-light-opacity',`${clamp(w.tunnelLight*.24,0,.24)}`);
   root.setProperty('--exit-flash-opacity',`${clamp(w.exitFlash*.34,0,.34)}`);
-  root.setProperty('--rain-shift',`${-((state.distance*.42)%92)}px`);
+  const rainShift=-((state.distance*.42)%92);
+  root.setProperty('--rain-shift',`${rainShift}px`);
+  root.setProperty('--rain-shift2',`${rainShift*.55}px`);
   root.setProperty('--speed-flow',`${clamp(kmh/150,0,1)}`);
   html.classList.toggle('is-rain',state.weather==='rain');
   html.classList.toggle('is-tunnel',w.feature==='tunnel'&&w.featureAmount>.08);
