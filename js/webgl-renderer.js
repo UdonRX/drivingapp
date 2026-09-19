@@ -42,7 +42,7 @@ class MeshBuilder{
 }
 
 const roadBuilder=new MeshBuilder(90000);
-const sceneryBuilder=new MeshBuilder(230000);
+const sceneryBuilder=new MeshBuilder(850000);
 const rainBuilder=new MeshBuilder(2400);
 const rs0={},rs1={},p0={},p1={},p2={},p3={};
 const matP=new Float32Array(16),matV=new Float32Array(16),matVP=new Float32Array(16);
@@ -80,8 +80,8 @@ function setupBuffer(buffer){gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.enableVert
 function uploadBuffer(buffer,builder,usage=gl.DYNAMIC_DRAW){if(!builder.count)return 0;gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,builder.data.subarray(0,builder.count*6),usage);return builder.count}
 function drawBuffer(buffer,count){if(!count)return;setupBuffer(buffer);gl.drawArrays(gl.TRIANGLES,0,count)}
 
-function roadQuad(builder,sA,sB,l0,l1,h,col){
-  roadPoint(sA,l0,h,p0);roadPoint(sA,l1,h,p1);roadPoint(sB,l1,h,p2);roadPoint(sB,l0,h,p3);builder.quad(p0,p1,p2,p3,col);
+function roadQuad(builder,sA,sB,l0,l1,h,col,shade=1){
+  roadPoint(sA,l0,h,p0);roadPoint(sA,l1,h,p1);roadPoint(sB,l1,h,p2);roadPoint(sB,l0,h,p3);builder.quad(p0,p1,p2,p3,col,shade);
 }
 function wallQuad(builder,sA,sB,lateral,h0,h1,col,shade=1){
   roadPoint(sA,lateral,h0,p0);roadPoint(sA,lateral,h1,p1);roadPoint(sB,lateral,h1,p2);roadPoint(sB,lateral,h0,p3);builder.quad(p0,p1,p2,p3,col,shade);
@@ -116,23 +116,210 @@ function buildRoad(){
   }
 }
 
-function pushBox(b,x,y,z,sx,sy,sz,col){
+// Low-poly geometry primitives for roadside scenery
+function pushBox(b,x,y,z,sx,sy,sz,col,shadeMult=1){
   const x0=x-sx/2,x1=x+sx/2,y0=y,y1=y+sy,z0=z-sz/2,z1=z+sz/2;
-  b.quadXYZ(x0,y0,z0,x1,y0,z0,x1,y1,z0,x0,y1,z0,col,.86);
-  b.quadXYZ(x1,y0,z1,x0,y0,z1,x0,y1,z1,x1,y1,z1,col,1);
-  b.quadXYZ(x0,y0,z1,x0,y0,z0,x0,y1,z0,x0,y1,z1,col,.74);
-  b.quadXYZ(x1,y0,z0,x1,y0,z1,x1,y1,z1,x1,y1,z0,col,.94);
-  b.quadXYZ(x0,y1,z0,x1,y1,z0,x1,y1,z1,x0,y1,z1,col,1.08);
-  b.quadXYZ(x0,y0,z1,x1,y0,z1,x1,y0,z0,x0,y0,z0,col,.66);
+  b.quadXYZ(x0,y0,z0,x1,y0,z0,x1,y1,z0,x0,y1,z0,col,.86*shadeMult);
+  b.quadXYZ(x1,y0,z1,x0,y0,z1,x0,y1,z1,x1,y1,z1,col,1.0*shadeMult);
+  b.quadXYZ(x0,y0,z1,x0,y0,z0,x0,y1,z0,x0,y1,z1,col,.74*shadeMult);
+  b.quadXYZ(x1,y0,z0,x1,y0,z1,x1,y1,z1,x1,y1,z0,col,.94*shadeMult);
+  b.quadXYZ(x0,y1,z0,x1,y1,z0,x1,y1,z1,x0,y1,z1,col,1.08*shadeMult);
+  b.quadXYZ(x0,y0,z1,x1,y0,z1,x1,y0,z0,x0,y0,z0,col,.66*shadeMult);
 }
-function pushPyramid(b,x,y,z,r,h,col){
+
+function pushPyramid(b,x,y,z,r,h,col,shadeMult=1){
   const ty=y+h,x0=x-r,x1=x+r,z0=z-r,z1=z+r;
-  b.triXYZ(x0,y,z0,x1,y,z0,x,ty,z,col,.88);b.triXYZ(x1,y,z0,x1,y,z1,x,ty,z,col,1);
-  b.triXYZ(x1,y,z1,x0,y,z1,x,ty,z,col,.78);b.triXYZ(x0,y,z1,x0,y,z0,x,ty,z,col,.92);
-  b.quadXYZ(x0,y,z0,x0,y,z1,x1,y,z1,x1,y,z0,col,.58);
+  b.triXYZ(x0,y,z0,x1,y,z0,x,ty,z,col,.88*shadeMult);
+  b.triXYZ(x1,y,z0,x1,y,z1,x,ty,z,col,1.0*shadeMult);
+  b.triXYZ(x1,y,z1,x0,y,z1,x,ty,z,col,.78*shadeMult);
+  b.triXYZ(x0,y,z1,x0,y,z0,x,ty,z,col,.92*shadeMult);
+  b.quadXYZ(x0,y,z0,x0,y,z1,x1,y,z1,x1,y,z0,col,.58*shadeMult);
 }
-function pushTree(b,x,y,z,scale,col){pushBox(b,x,y,z,.18*scale,1.8*scale,.18*scale,rgb('#4d3d2d'));pushPyramid(b,x,y+1.0*scale,z,1.25*scale,3.6*scale,col)}
-function pushPole(b,x,y,z,scale,lit){pushBox(b,x,y,z,.08*scale,3.8*scale,.08*scale,rgb('#50575a'));if(lit)pushBox(b,x,y+3.65*scale,z,.55*scale,.08*scale,.16*scale,rgb('#ffe39a'))}
+
+function pushGrass(b,x,y,z,scale,col){
+  const h=0.35*scale,w=0.28*scale;
+  const darkCol=mixColor(col,[0,0,0],.25);
+  // Base soil/grass patch
+  b.quadXYZ(x-w,y+.01,z-w, x+w,y+.01,z-w, x+w,y+.01,z+w, x-w,y+.01,z+w, darkCol, .9);
+  // Crossed grass blades
+  b.quadXYZ(x-w,y,z, x+w,y,z, x+w,y+h,z, x-w,y+h,z, col, 1.0);
+  b.quadXYZ(x,y,z-w, x,y,z+w, x,y+h,z+w, x,y+h,z-w, col, 0.88);
+  b.quadXYZ(x-w*.7,y,z-w*.7, x+w*.7,y,z+w*.7, x+w*.7,y+h*.85,z+w*.7, x-w*.7,y+h*.85,z-w*.7, col, 0.94);
+}
+
+function pushShrub(b,x,y,z,scale,col){
+  const r=0.55*scale,h=0.7*scale;
+  const trunkCol=rgb('#3f3327');
+  pushBox(b,x,y,z,0.12*scale,0.2*scale,0.12*scale,trunkCol);
+  pushPyramid(b,x,y+0.15*scale,z,r,h,col,1.0);
+  pushPyramid(b,x+r*.2,y+0.25*scale,z+r*.2,r*.7,h*.8,mixColor(col,[1,1,1],.08),0.92);
+}
+
+function pushTree(b,x,y,z,scale,col,type=0){
+  const trunkCol=rgb('#433527');
+  if(type===0){ // Coniferous / Pine tree
+    pushBox(b,x,y,z,0.22*scale,1.8*scale,0.22*scale,trunkCol);
+    pushPyramid(b,x,y+1.0*scale,z,1.3*scale,3.6*scale,col,1.0);
+    pushPyramid(b,x,y+1.8*scale,z,1.0*scale,2.8*scale,mixColor(col,[1,1,1],.08),1.05);
+  }else if(type===1){ // Deciduous / Round Canopy Tree
+    pushBox(b,x,y,z,0.26*scale,2.2*scale,0.26*scale,trunkCol);
+    const cy=y+1.6*scale,r=1.35*scale;
+    pushBox(b,x,cy,z,r*1.6,r*1.4,r*1.6,col,0.95);
+    pushBox(b,x,cy+r*.5,z,r*1.2,r*1.0,r*1.2,mixColor(col,[1,1,1],.12),1.05);
+  }else{ // Small Roadside Planted Tree
+    pushBox(b,x,y,z,0.14*scale,1.2*scale,0.14*scale,trunkCol);
+    pushBox(b,x,y+0.9*scale,z,0.9*scale,0.9*scale,0.9*scale,col,1.0);
+  }
+}
+
+function pushPole(b,x,y,z,scale,lit,side=1){
+  const poleCol=rgb('#5a6064'),crossCol=rgb('#3a3f42'),boxCol=rgb('#485055'),wirePinCol=rgb('#c2c7ca');
+  const h=4.2*scale;
+  // Utility pole main vertical post
+  pushBox(b,x,y,z,0.11*scale,h,0.11*scale,poleCol);
+  // Upper crossarm (電柱の腕木)
+  const armY=y+h*.88;
+  pushBox(b,x,armY,z,1.2*scale,0.08*scale,0.1*scale,crossCol);
+  // Lower secondary arm
+  pushBox(b,x,armY-0.5*scale,z,0.8*scale,0.07*scale,0.09*scale,crossCol);
+  // Transformer box (トランス)
+  pushBox(b,x+0.12*scale*side,armY-0.7*scale,z,0.28*scale,0.45*scale,0.24*scale,boxCol);
+  // Insulators / pins on crossarm ends (ガイシ)
+  pushBox(b,x-0.52*scale,armY+0.06*scale,z,0.06*scale,0.12*scale,0.06*scale,wirePinCol);
+  pushBox(b,x+0.52*scale,armY+0.06*scale,z,0.06*scale,0.12*scale,0.06*scale,wirePinCol);
+  if(lit){
+    pushBox(b,x+0.3*side*scale,armY-0.2*scale,z,0.6*scale,0.08*scale,0.14*scale,crossCol);
+    pushBox(b,x+0.55*side*scale,armY-0.26*scale,z,0.18*scale,0.10*scale,0.16*scale,rgb('#ffe8a3'));
+  }
+}
+
+function pushWire(b,p1,p2,sag=0.4,col=rgb('#1e2225')){
+  const steps=4;
+  for(let i=0;i<steps;i++){
+    const t0=i/steps, t1=(i+1)/steps;
+    const x0=p1.x+(p2.x-p1.x)*t0, y0=p1.y+(p2.y-p1.y)*t0 - sag*Math.sin(t0*Math.PI), z0=p1.z+(p2.z-p1.z)*t0;
+    const x1=p1.x+(p2.x-p1.x)*t1, y1=p1.y+(p2.y-p1.y)*t1 - sag*Math.sin(t1*Math.PI), z1=p1.z+(p2.z-p1.z)*t1;
+    b.quadXYZ(x0-.015,y0,z0, x0+.015,y0,z0, x1+.015,y1,z1, x1-.015,y1,z1, col, 0.7);
+  }
+}
+
+function pushSign(b,x,y,z,type='speed',scale=1){
+  const poleCol=rgb('#828a8e'),white=rgb('#f4f5f0'),red=rgb('#d83535'),blue=rgb('#2a5caa'),yellow=rgb('#e2a828'),black=rgb('#1b1d1f');
+  const h=2.2*scale;
+  // Sign pole
+  pushBox(b,x,y,z,0.06*scale,h,0.06*scale,poleCol);
+  const sy=y+h*.85;
+  if(type==='speed'){ // Circular Speed Limit Sign (50km/h)
+    const r=0.38*scale;
+    pushBox(b,x,sy,z,r*2,r*2,0.04*scale,red);
+    pushBox(b,x,sy,z+0.01*scale,r*1.5,r*1.5,0.04*scale,white);
+    pushBox(b,x,sy,z+0.02*scale,r*0.7,r*0.4,0.04*scale,blue);
+  }else if(type==='curve'){ // Curve Warning Sign (Yellow Diamond)
+    const w=0.55*scale;
+    pushBox(b,x,sy,z,w,w,0.04*scale,yellow);
+    pushBox(b,x,sy,z+0.01*scale,w*0.3,w*0.5,0.04*scale,black);
+  }else{ // Route / Direction Board (Blue Rectangular Sign)
+    const w=0.9*scale,bh=0.6*scale;
+    pushBox(b,x,sy,z,w,bh,0.04*scale,blue);
+    pushBox(b,x,sy,z+0.01*scale,w*0.82,bh*0.75,0.04*scale,white);
+  }
+}
+
+function pushBuilding(b,x,y,z,width,height,depth,wallCol,roofCol,type=0){
+  // Main building structure
+  pushBox(b,x,y,z,width,height,depth,wallCol);
+  const night=state.time==='night';
+  const winCol=night?rgb('#f8d374'):rgb('#516370');
+
+  if(type===0){ // Japanese House with Pitch/Gabled Roof
+    const roofH=height*0.55;
+    pushPyramid(b,x,y+height,z,Math.max(width,depth)*0.65,roofH,roofCol,1.05);
+    // Door / windows
+    pushBox(b,x,y+height*0.25,z+depth*0.51,width*0.25,height*0.4,0.05,rgb('#2c221b'));
+    pushBox(b,x+width*0.22,y+height*0.55,z+depth*0.51,width*0.28,height*0.28,0.05,winCol);
+    pushBox(b,x-width*0.22,y+height*0.55,z+depth*0.51,width*0.28,height*0.28,0.05,winCol);
+  }else if(type===1){ // Roadside Commercial Store / Shop
+    // Front visor overhang
+    pushBox(b,x,y+height*0.7,z+depth*0.55,width*1.08,0.12,depth*0.3,roofCol);
+    // Large glass display / entrance
+    pushBox(b,x,y+height*0.3,z+depth*0.51,width*0.75,height*0.5,0.05,winCol);
+  }else{ // Agricultural Shed / Warehouse
+    // Low pitched roof
+    pushBox(b,x,y+height,z,width*1.05,height*0.18,depth*1.05,roofCol);
+    pushBox(b,x,y+height*0.35,z+depth*0.51,width*0.4,height*0.6,0.05,rgb('#3a3a3d'));
+  }
+}
+
+function pushFence(b,sA,sB,lateral,height,col){
+  roadPoint(sA,lateral,0,p0); roadPoint(sB,lateral,0,p1);
+  roadPoint(sA,lateral,height,p2); roadPoint(sB,lateral,height,p3);
+  // Posts
+  pushBox(sceneryBuilder,p0.x,p0.y,p0.z,0.08,height*1.1,0.08,col);
+  pushBox(sceneryBuilder,p1.x,p1.y,p1.z,0.08,height*1.1,0.08,col);
+  // Rails
+  wallQuad(sceneryBuilder,sA,sB,lateral,height*0.4,height*0.52,col,0.9);
+  wallQuad(sceneryBuilder,sA,sB,lateral,height*0.78,height*0.9,col,0.95);
+}
+
+function pushField(b,sA,sB,lat0,lat1,colField,colRidge){
+  // Rice field / farmland surface
+  roadQuad(b,sA,sB,lat0,lat1,-0.08,colField,0.92);
+  // Raised earthen ridges (畦 - aze)
+  roadQuad(b,sA,sB,lat0,lat0+0.4,-0.02,colRidge,0.85);
+  roadQuad(b,sA,sB,lat1-0.4,lat1,-0.02,colRidge,0.85);
+}
+
+function pushRetainingWall(b,sA,sB,side,h0,h1,col){
+  const lat=side*(ROAD_HALF_WIDTH+ROAD_SHOULDER+0.1);
+  wallQuad(b,sA,sB,lat,h0,h1,col,0.88);
+  // Wall top cap
+  roadPoint(sA,lat,h1,p0); roadPoint(sA,lat+side*0.3,h1,p1);
+  roadPoint(sB,lat+side*0.3,h1,p2); roadPoint(sB,lat,h1,p3);
+  b.quad(p0,p1,p2,p3,mixColor(col,[1,1,1],.15),1.0);
+}
+
+function pushBusStop(b,sA,side){
+  const lat=side*(ROAD_HALF_WIDTH+1.8);
+  roadPoint(sA,lat,0,p0);
+  const night=state.time==='night';
+  // Shelter roof & posts
+  pushBox(b,p0.x,p0.y,p0.z,1.6,2.1,1.2,rgb('#525a5e'));
+  pushBox(b,p0.x,p0.y+2.0,p0.z,1.8,0.12,1.4,rgb('#386d88'));
+  // Signpost
+  pushSign(b,p0.x+side*0.9,p0.y,p0.z+0.8,'route',0.8);
+}
+
+function pushGroundTerrain(b,sA,sB,lat0,lat1,h0,h1,col){
+  roadPoint(sA,lat0,h0,p0); roadPoint(sA,lat1,h1,p1);
+  roadPoint(sB,lat1,h1,p2); roadPoint(sB,lat0,h0,p3);
+  b.quad(p0,p1,p2,p3,col,0.85);
+}
+
+function pushMountainRange(b,vz){
+  const night=state.time==='night', sunset=state.time==='sunset';
+  const baseCol=rgb(night?'#0e1921':sunset?'#524859':state.environment==='mountain'?'#3a5848':'#485d58');
+  const midCol=rgb(night?'#14232f':sunset?'#6c5b6b':state.environment==='mountain'?'#4d6f5c':'#5b756e');
+
+  // Layer 1: Far background mountains
+  for(let i=0;i<12;i++){
+    const z=vz+300+i*85;
+    const side=i%2===0?1:-1;
+    const offset=35+hash1(i*2.1,state.routeSeed)*60;
+    p0.x=side*offset; p0.y=-5; p0.z=z;
+    const w=35+hash1(i*3.7)*45, h=28+hash1(i*5.3)*38;
+    pushPyramid(b,p0.x,p0.y,p0.z,w,h,baseCol,0.78);
+  }
+  // Layer 2: Mid-distance rolling hills
+  for(let i=0;i<10;i++){
+    const z=vz+180+i*70;
+    const side=(i%2===1)?1:-1;
+    const offset=18+hash1(i*4.3,state.routeSeed)*35;
+    p0.x=side*offset; p0.y=-3; p0.z=z;
+    const w=22+hash1(i*1.9)*30, h=16+hash1(i*2.8)*22;
+    pushPyramid(b,p0.x,p0.y,p0.z,w,h,midCol,0.88);
+  }
+}
+
 function sidePosition(z,side,offset,out){sampleRoad(z,rs0);return roadPoint(rs0,side*(ROAD_HALF_WIDTH+offset),0,out)}
 
 function buildGuardrails(){
@@ -203,23 +390,141 @@ function buildCoastWater(){
   }
 }
 
+function buildGroundAndShoulderTerrain(){
+  const b=sceneryBuilder,vz=state.vehicle.z,env=state.environment,night=state.time==='night';
+  const groundCol=rgb(night?'#121d17':env==='city'?'#3a4042':env==='mountain'?'#28422e':env==='country'?'#425e32':'#4e5d48');
+  const farGroundCol=rgb(night?'#0e1712':env==='city'?'#323739':env==='mountain'?'#223726':env==='country'?'#364e28':'#414e3d');
+
+  const step=ROAD_SEGMENT*2;
+  const start=Math.floor((vz+ROAD_NEAR)/step)*step;
+  const end=vz+580;
+
+  for(let z=start;z<end;z+=step){
+    sampleRoad(z,rs0); sampleRoad(z+step,rs1);
+    const sw=ROAD_HALF_WIDTH+ROAD_SHOULDER;
+    // Left shoulder terrain
+    pushGroundTerrain(b,rs0,rs1,-sw,-sw-18,0,-0.6,groundCol);
+    pushGroundTerrain(b,rs0,rs1,-sw-18,-sw-80,-0.6,-2.2,farGroundCol);
+    // Right shoulder terrain
+    pushGroundTerrain(b,rs0,rs1,sw,sw+18,0,-0.6,groundCol);
+    pushGroundTerrain(b,rs0,rs1,sw+18,sw+80,-0.6,-2.2,farGroundCol);
+  }
+}
+
 function buildScenery(){
-  sceneryBuilder.reset();buildCoastWater();buildGuardrails();buildNoiseBarriers();buildTunnelAndBridge();
+  sceneryBuilder.reset();
+  buildGroundAndShoulderTerrain();
+  buildCoastWater();
+  buildGuardrails();
+  buildNoiseBarriers();
+  buildTunnelAndBridge();
+
   const b=sceneryBuilder,vz=state.vehicle.z,env=state.environment,night=state.time==='night';
   const treeCol=rgb(night?'#14251a':env==='mountain'?'#2e603a':env==='country'?'#55763c':'#426d4a');
-  const nearStep=quality<.82?24:18;
-  for(let z=Math.floor((vz+20)/nearStep)*nearStep;z<vz+140;z+=nearStep){for(const side of[-1,1]){
-    const id=Math.floor(z/nearStep)*13+side*3,offset=1.3+hash1(id,state.routeSeed)*2.8,p=sidePosition(z+hash1(id+1)*6,side,offset,p0),s=.65+hash1(id+2)*.8;
-    if(env==='city')pushPole(b,p.x,p.y,p.z,s,night);else if(env==='coast'){if(id%3===0)pushPole(b,p.x,p.y,p.z,.72,false);else pushBox(b,p.x,p.y,p.z,.45*s,.35*s,.55*s,rgb('#7c7569'));}else if(env==='mountain')pushTree(b,p.x,p.y,p.z,s,treeCol);else if(id%4===0)pushPole(b,p.x,p.y,p.z,.8,false);else pushTree(b,p.x,p.y,p.z,.72*s,treeCol);
-  }}
-  const farStep=quality<.82?78:54;
-  for(let z=Math.floor((vz+120)/farStep)*farStep;z<vz+680;z+=farStep){for(const side of[-1,1]){
-    const id=Math.floor(z/farStep)*7+side*5,offset=8+hash1(id,state.routeSeed)*18,p=sidePosition(z,side,offset,p0);
-    if(env==='city'){const h=5+hash1(id+2)*18,w=3+hash1(id+4)*7;pushBox(b,p.x,p.y,p.z,w,h,w*.8,rgb(night?'#1a222c':'#707d84'));if(night&&id%2===0)pushBox(b,p.x,p.y+h*.72,p.z-.45,w*.65,.14,.10,rgb('#e4c878'))}
-    else if(env==='coast'){if(side<0)pushPyramid(b,p.x,p.y,p.z,5+hash1(id)*6,5+hash1(id+3)*6,rgb(night?'#1d3028':'#426b57'))}
-    else pushTree(b,p.x,p.y,p.z,1.2+hash1(id+9)*1.6,treeCol);
-  }}
-  for(let i=0;i<10;i++){const z=vz+720+i*95,side=i%2?1:-1,p=sidePosition(z,side,45+hash1(i+Math.floor(vz/500))*55,p0);pushPyramid(b,p.x,p.y-3,p.z,18+hash1(i*2)*22,22+hash1(i*3)*28,rgb(night?'#162229':state.time==='sunset'?'#6c6c68':'#667d78'))}
+  const shrubCol=rgb(night?'#182e20':env==='mountain'?'#3d6f4b':env==='country'?'#628746':'#4f7b58');
+  const grassCol=rgb(night?'#1e3626':env==='country'?'#769b4e':env==='mountain'?'#4c7855':'#5a8352');
+  const houseWall=rgb(night?'#222a33':'#8c867a'),houseRoof=rgb(night?'#161c22':'#3d4852');
+  const shopWall=rgb(night?'#2b333a':'#a2a8ab'),shopRoof=rgb(night?'#1c2830':'#2b5c70');
+  const fieldCol=rgb(night?'#15281a':state.time==='sunset'?'#6b6d3b':'#527a3b');
+  const ridgeCol=rgb(night?'#1a2018':'#3d3124');
+  const fenceCol=rgb(night?'#3d454a':'#80888c');
+  const wallCol=rgb(night?'#2b3136':'#71797e');
+
+  // FAR LAYER (遠景: Distant Mountains & Horizon Silhouette)
+  pushMountainRange(b,vz);
+
+  // NEAR LAYER (近景: 5m - 90m - Grass, Low Shrubs, Signs, Utility Poles & Power Lines)
+  const nearStep=quality<.82?14:10;
+  let prevPoleP1=null, prevPoleP2=null;
+
+  for(let z=Math.floor((vz+10)/nearStep)*nearStep;z<vz+180;z+=nearStep){
+    const id=Math.floor(z/nearStep);
+
+    // Near grass tufts & low shrubs along road shoulder (fast motion past camera)
+    for(const side of[-1,1]){
+      const gOffset=0.6+hash1(id*3.1+side*1.7)*1.4;
+      sampleRoad(z,rs0);
+      const gp=roadPoint(rs0,side*(ROAD_HALF_WIDTH+ROAD_SHOULDER+gOffset),0,p0);
+      pushGrass(b,gp.x,gp.y,gp.z,0.8+hash1(id*2.3)*0.6,grassCol);
+
+      if(id%2===0){
+        const sOffset=1.2+hash1(id*4.1+side)*2.0;
+        const sp=roadPoint(rs0,side*(ROAD_HALF_WIDTH+ROAD_SHOULDER+sOffset),0,p1);
+        pushShrub(b,sp.x,sp.y,sp.z,0.7+hash1(id*1.8)*0.5,shrubCol);
+      }
+    }
+
+    // Road Traffic Signs (標識)
+    if(id%7===2){
+      const side=(id%14===2)?1:-1;
+      const sp=sidePosition(z,side,1.2,p0);
+      const signType=(id%21===2)?'speed':(id%21===9)?'curve':'route';
+      pushSign(b,sp.x,sp.y,sp.z,signType,0.9);
+    }
+
+    // Utility Poles (電柱) & Power Lines (電線)
+    if(id%3===0){
+      const side=1; // Poles aligned along right side of road
+      const pp=sidePosition(z,side,2.2,p0);
+      pushPole(b,pp.x,pp.y,pp.z,1.0,night,side);
+
+      // Power Line wires connecting overhead pole crossarms
+      const wireHeight=4.2*0.88;
+      const poleArmP1=roadPoint(rs0,side*(ROAD_HALF_WIDTH+2.2)-0.52,wireHeight,{});
+      const poleArmP2=roadPoint(rs0,side*(ROAD_HALF_WIDTH+2.2)+0.52,wireHeight,{});
+      if(prevPoleP1&&prevPoleP2){
+        pushWire(b,prevPoleP1,poleArmP1,0.35);
+        pushWire(b,prevPoleP2,poleArmP2,0.35);
+      }
+      prevPoleP1=poleArmP1; prevPoleP2=poleArmP2;
+    }
+  }
+
+  // MID LAYER (中景: 25m - 480m - Buildings, Rice Fields, Fences, Structures, Trees)
+  const midStep=quality<.82?32:22;
+  for(let z=Math.floor((vz+25)/midStep)*midStep;z<vz+480;z+=midStep){
+    const id=Math.floor(z/midStep);
+    sampleRoad(z,rs0); sampleRoad(z+midStep,rs1);
+
+    // Rice Fields / Farmlands (田畑) - Country & Mountain roads
+    if((env==='country'||env==='mountain')&&id%2===0){
+      const side=(id%4===0)?-1:1;
+      const fLat0=side>0?(ROAD_HALF_WIDTH+3.5):-(ROAD_HALF_WIDTH+28);
+      const fLat1=side>0?(ROAD_HALF_WIDTH+28):-(ROAD_HALF_WIDTH+3.5);
+      pushField(b,rs0,rs1,fLat0,fLat1,fieldCol,ridgeCol);
+      // Fence along field boundary
+      pushFence(b,rs0,rs1,side*(ROAD_HALF_WIDTH+2.8),0.8,fenceCol);
+    }
+
+    // Roadside Structures (構造物: Retaining Walls & Bus Stops)
+    if((env==='mountain'||env==='country')&&id%5===1){
+      const side=(id%10===1)?-1:1;
+      pushRetainingWall(b,rs0,rs1,side,0,2.2,wallCol);
+      if(id%10===1)pushBusStop(b,rs0,side);
+    }
+
+    // Roadside Buildings & Houses (道路脇の建物)
+    if(id%3===1){
+      for(const side of[-1,1]){
+        const hasBuilding=env==='city'||(env==='country'&&side<0)||(env==='mountain'&&id%6===1);
+        if(hasBuilding){
+          const bOffset=5.5+hash1(id*3.3+side)*8.0;
+          const bp=sidePosition(z,side,bOffset,p0);
+          const bType=env==='city'?(id%2===0?1:0):(id%4===1?0:2);
+          const w=4.5+hash1(id*2.1)*3.5, h=3.2+hash1(id*4.7)*3.8, d=4.0+hash1(id*1.3)*3.0;
+          pushBuilding(b,bp.x,bp.y,bp.z,w,h,d,bType===1?shopWall:houseWall,bType===1?shopRoof:houseRoof,bType);
+        }
+      }
+    }
+
+    // Trees (木) - Rich groves & roadside foliage
+    for(const side of[-1,1]){
+      const treeOffset=3.5+hash1(id*5.1+side*2.3)*14.0;
+      const tp=sidePosition(z+hash1(id)*8,side,treeOffset,p0);
+      const treeType=(env==='mountain'||id%3===0)?0:(id%3===1)?1:2;
+      pushTree(b,tp.x,tp.y,tp.z,0.85+hash1(id*3.9)*0.9,treeCol,treeType);
+    }
+  }
 }
 
 function buildRain(){
