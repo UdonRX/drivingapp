@@ -336,6 +336,12 @@ function pushMountainRange(b,vz){
   }
 }
 
+function pushStreetLamp(b,x,y,z,scale=1,lit=false){const pole=rgb('#5c6265'),head=lit?rgb('#ffe8a5'):rgb('#8d979b');pushBox(b,x,y,z,.10,4*scale,.10,pole,.9);pushBox(b,x,y+3.85*scale,z,.72*scale,.10,.10,pole,.92);pushBox(b,x+.3*scale,y+3.72*scale,z,.24*scale,.16,.22,head)}
+function pushPerson(b,x,y,z,scale=1,coat=rgb('#4b5360')){const skin=rgb('#c58f72'),dark=rgb('#25282c');pushBox(b,x,y,z,.24*scale,.72*scale,.20*scale,coat,.95);pushBox(b,x,y+.86*scale,z,.20*scale,.22*scale,.18*scale,skin);pushBox(b,x-.10*scale,y-.55*scale,z,.08*scale,.55*scale,.08*scale,dark,.88);pushBox(b,x+.10*scale,y-.55*scale,z,.08*scale,.55*scale,.08*scale,dark,.88)}
+function pushPond(b,sA,sB,side,offset,width,waterCol,bankCol){const inner=ROAD_HALF_WIDTH+offset,outer=inner+width;roadQuad(b,sA,sB,side*inner,side*outer,-.35,waterCol,.92);roadQuad(b,sA,sB,side*(inner-.8),side*inner,-.08,bankCol,.88);roadQuad(b,sA,sB,side*outer,side*(outer+1.2),-.18,bankCol,.82)}
+function pushCoastCliff(b,sA,sB,side,base,top,rockCol,grassCol){const inner=ROAD_HALF_WIDTH+ROAD_SHOULDER+base,outer=inner+8;wallQuad(b,sA,sB,side*inner,-1,top,rockCol,.88);roadQuad(b,sA,sB,side*inner,side*outer,top-.02,grassCol,.78)}
+function pushCoastBeach(b,sA,sB,side,inner,width,sandCol,waterCol){const a=ROAD_HALF_WIDTH+inner,c=a+width;roadQuad(b,sA,sB,side*a,side*c,-1.55,sandCol,.9);roadQuad(b,sA,sB,side*c,side*(c+34),-1.62,waterCol,.88)}
+function pushCityBlock(b,x,y,z,w,h,d,night){const wall=rgb(night?'#222931':'#707b83'),roof=rgb(night?'#171d24':'#505961');pushBox(b,x,y,z,w,h,d,wall,.94);const win=night?rgb('#ffd879'):rgb('#5f7b8c');const cols=Math.max(2,Math.floor(w/1.8)),rows=Math.max(2,Math.floor(h/2));for(let ix=0;ix<cols;ix+=Math.max(1,Math.floor(cols/4)))for(let iy=0;iy<rows;iy+=Math.max(1,Math.floor(rows/5))){const wx=x-w/2+(ix+.5)*w/cols,wy=y+.65+(iy+.5)*h/rows;pushBox(b,wx,wy,z+d/2+.025,Math.min(.72,w/cols*.65),Math.min(.82,h/rows*.58),.035,win,.82)}pushBox(b,x,y+h,z,w*1.02,.12,d*1.02,roof,.9)}
 function sidePosition(z,side,offset,out){sampleRoad(z,rs0);return roadPoint(rs0,side*(ROAD_HALF_WIDTH+offset),0,out)}
 
 function buildGuardrails(){
@@ -468,103 +474,72 @@ function buildScenery(){
   const fenceCol=rgb(night?'#3d454a':'#80888c');
   const wallCol=rgb(night?'#2b3136':'#71797e');
 
-  // FAR LAYER (遠景: Distant Mountains & Horizon Silhouette)
-  pushMountainRange(b,vz);
-
-  // NEAR LAYER (近景: 5m - 90m - Grass, Low Shrubs, Signs, Utility Poles & Power Lines)
-  const nearStep=quality<.82?12:8;
-  let prevPoleP1=null, prevPoleP2=null;
-
-  for(let z=Math.floor((vz+10)/nearStep)*nearStep;z<vz+180;z+=nearStep){
-    const id=Math.floor(z/nearStep);
-
-    // Near grass tufts & low shrubs along road shoulder (fast motion past camera)
-    for(const side of[-1,1]){
-      const gOffset=0.6+hash1(id*3.1+side*1.7)*1.4;
-      sampleRoad(z,rs0);
-      const gp=roadPoint(rs0,side*(ROAD_HALF_WIDTH+ROAD_SHOULDER+gOffset),0,p0);
-      pushGrass(b,gp.x,gp.y,gp.z,0.8+hash1(id*2.3)*0.6,grassCol);
-
-      if(id%2===0){
-        const sOffset=1.2+hash1(id*4.1+side)*2.0;
-        const sp=roadPoint(rs0,side*(ROAD_HALF_WIDTH+ROAD_SHOULDER+sOffset),0,p1);
-        pushShrub(b,sp.x,sp.y,sp.z,0.7+hash1(id*1.8)*0.5,shrubCol);
-      }
+  // Each environment gets its own visual language: terrain, architecture, density and landmarks.
+  if(env==='mountain'){
+    const rock=rgb(night?'#252b2b':'#66675e'),oldWall=rgb(night?'#2a2925':'#7b6750');
+    for(let z=Math.floor((vz+24)/20)*20;z<vz+520;z+=20){
+      sampleRoad(z,rs0);sampleRoad(z+20,rs1);const id=Math.floor(z/20),side=id%3===0?-1:1;
+      if(id%2===0)pushRetainingWall(b,rs0,rs1,side,0,1.8+hash1(z)*2.8,rock);
+      if(id%5===1){const p=sidePosition(z,side,6+hash1(z)*5,p0);pushBuilding(b,p.x,p.y,p.z,4.5+hash1(z)*2,2.4+hash1(z*2)*1.5,4,oldWall,houseRoof,0)}
+      if(id%4===0){const p=sidePosition(z,-side,7+hash1(z*2)*9,p0);pushTree(b,p.x,p.y,p.z,1.1+hash1(z*3)*.8,treeCol,0)}
     }
-
-    // Road Traffic Signs (標識)
-    if(id%7===2){
-      const side=(id%14===2)?1:-1;
-      const sp=sidePosition(z,side,1.2,p0);
-      const signType=(id%21===2)?'speed':(id%21===9)?'curve':'route';
-      pushSign(b,sp.x,sp.y,sp.z,signType,0.9);
+  }else if(env==='country'){
+    const pond=rgb(night?'#10262a':'#4b91a0'),mud=rgb(night?'#1c241b':'#6d6749'),shed=rgb(night?'#25282a':'#817664'),roof=rgb(night?'#1c2024':'#4d4b45');
+    for(let z=Math.floor((vz+30)/30)*30;z<vz+560;z+=30){
+      sampleRoad(z,rs0);sampleRoad(z+30,rs1);const id=Math.floor(z/30),side=id%2?-1:1;
+      if(id%3===0)pushField(b,rs0,rs1,side*(ROAD_HALF_WIDTH+3),side*(ROAD_HALF_WIDTH+34),fieldCol,ridgeCol);
+      if(id%7===2)pushPond(b,rs0,rs1,side,5+hash1(id)*8,18+hash1(id*2)*22,pond,mud);
+      if(id%6===1){const p=sidePosition(z,side,10+hash1(id)*12,p0);pushBuilding(b,p.x,p.y,p.z,5+hash1(id)*3,2.5+hash1(id*2)*1.6,5,shed,roof,2)}
+      if(id%9===4){const p=sidePosition(z,side,4.5,p0);pushTree(b,p.x,p.y,p.z,1.5,treeCol,1)}
     }
-
-    // Utility Poles (電柱) & Power Lines (電線)
-    if(id%3===0){
-      const side=1; // Poles aligned along right side of road
-      const pp=sidePosition(z,side,2.2,p0);
-      pushPole(b,pp.x,pp.y,pp.z,1.0,night,side);
-
-      // Power Line wires connecting overhead pole crossarms
-      const wireHeight=4.2*0.88;
-      const poleArmP1=roadPoint(rs0,side*(ROAD_HALF_WIDTH+2.2)-0.52,wireHeight,{});
-      const poleArmP2=roadPoint(rs0,side*(ROAD_HALF_WIDTH+2.2)+0.52,wireHeight,{});
-      if(prevPoleP1&&prevPoleP2){
-        pushWire(b,prevPoleP1,poleArmP1,0.35);
-        pushWire(b,prevPoleP2,poleArmP2,0.35);
-      }
-      prevPoleP1=poleArmP1; prevPoleP2=poleArmP2;
-    }
-  }
-
-  // MID LAYER (中景: 25m - 480m - Buildings, Rice Fields, Fences, Structures, Trees)
-  const midStep=quality<.82?26:18;
-  for(let z=Math.floor((vz+25)/midStep)*midStep;z<vz+480;z+=midStep){
-    const id=Math.floor(z/midStep);
-    sampleRoad(z,rs0); sampleRoad(z+midStep,rs1);
-
-    // Rice Fields / Farmlands (田畑) - Country & Mountain roads
-    if((env==='country'||env==='mountain')&&id%2===0){
-      const side=(id%4===0)?-1:1;
-      const fLat0=side>0?(ROAD_HALF_WIDTH+3.5):-(ROAD_HALF_WIDTH+28);
-      const fLat1=side>0?(ROAD_HALF_WIDTH+28):-(ROAD_HALF_WIDTH+3.5);
-      pushField(b,rs0,rs1,fLat0,fLat1,fieldCol,ridgeCol);
-      // Fence along field boundary
-      pushFence(b,rs0,rs1,side*(ROAD_HALF_WIDTH+2.8),0.8,fenceCol);
-    }
-
-    // Roadside Structures (構造物: Retaining Walls & Bus Stops)
-    if((env==='mountain'||env==='country')&&id%5===1){
-      const side=(id%10===1)?-1:1;
-      pushRetainingWall(b,rs0,rs1,side,0,2.2,wallCol);
-      if(id%10===1)pushBusStop(b,rs0,side);
-    }
-
-    // Roadside Buildings & Houses (道路脇の建物)
-    if(id%3===1){
+  }else if(env==='city'){
+    const sidewalk=rgb(night?'#3a4045':'#85888a');
+    for(let z=Math.floor((vz+12)/12)*12;z<vz+500;z+=12){
+      sampleRoad(z,rs0);const id=Math.floor(z/12),dense=id%5!==0;
       for(const side of[-1,1]){
-        const hasBuilding=env==='city'||(env==='country'&&side<0)||(env==='mountain'&&id%6===1);
-        if(hasBuilding){
-          const bOffset=5.5+hash1(id*3.3+side)*8.0;
-          const bp=sidePosition(z,side,bOffset,p0);
-          const bType=env==='city'?(id%2===0?1:0):(id%4===1?0:2);
-          const w=4.5+hash1(id*2.1)*3.5, h=3.2+hash1(id*4.7)*3.8, d=4.0+hash1(id*1.3)*3.0;
-          pushBuilding(b,bp.x,bp.y,bp.z,w,h,d,bType===1?shopWall:houseWall,bType===1?shopRoof:houseRoof,bType);
+        const off=dense?5+hash1(id*2.7+side)*4:10+hash1(id*4.1)*10,p=sidePosition(z,side,off,p0),pav=roadPoint(rs0,side*(ROAD_HALF_WIDTH+2),.01,p1);
+        pushBox(b,pav.x,pav.y,pav.z,3.2,.08,12,sidewalk,.8);
+        if(dense){
+          pushCityBlock(b,p.x,p.y,p.z,5+hash1(id*5.2)*6,7+hash1(id*3.1+side)*15,6+hash1(id*7.3)*5,night);
+          if(id%3===0){const q=roadPoint(rs0,side*(ROAD_HALF_WIDTH+2.45),0,p1);pushPerson(b,q.x,q.y,q.z,.9,hash1(id+side)>.5?rgb('#3e596d'):rgb('#6a4c4a'));if(id%6===0)pushPerson(b,q.x+side*.8,q.y,q.z+1.2,.82,rgb('#526344'))}
         }
       }
+      if(id%2===0){const lp=sidePosition(z,1,1.6,p0);pushStreetLamp(b,lp.x,lp.y,lp.z,1,night)}
     }
-
-    // Trees (木) - Rich groves & roadside foliage
-    for(const side of[-1,1]){
-      const treeOffset=3.5+hash1(id*5.1+side*2.3)*14.0;
-      const tp=sidePosition(z+hash1(id)*8,side,treeOffset,p0);
-      const treeType=(env==='mountain'||id%3===0)?0:(id%3===1)?1:2;
-      pushTree(b,tp.x,tp.y,tp.z,0.85+hash1(id*3.9)*0.9,treeCol,treeType);
+    for(let i=0;i<12;i++){const z=vz+150+i*34,side=i%2?-1:1,p=sidePosition(z,side,48+hash1(i)*55,p0);pushCityBlock(b,p.x,p.y,p.z,10+hash1(i)*10,24+hash1(i*2)*35,10+hash1(i*3)*8,night)}
+  }else if(env==='coast'){
+    const water=rgb(night?'#0d3143':state.time==='sunset'?'#3f7185':'#3188a8'),sand=rgb(night?'#2b3430':'#b8ad87'),rock=rgb(night?'#20282a':'#65655b');
+    for(let z=Math.floor((vz+20)/20)*20;z<vz+700;z+=20){
+      sampleRoad(z,rs0);sampleRoad(z+20,rs1);const side=Math.floor(z/80)%2===0?1:-1;
+      if(Math.floor(z/80)%3===0)pushCoastBeach(b,rs0,rs1,side,4,28+hash1(z)*18,sand,water);
+      else{pushCoastCliff(b,rs0,rs1,side,4,2+hash1(z)*2.5,rock,grassCol);pushCoastBeach(b,rs0,rs1,-side,14,18,sand,water)}
+      if(Math.floor(z/20)%3===0){const p=sidePosition(z,side,2,p0);pushBox(b,p.x,p.y,p.z,.10,1,.10,rgb('#d9d0b0'))}
+      if(Math.floor(z/20)%4===1){const p=sidePosition(z,-side,5+hash1(z)*8,p0);pushShrub(b,p.x,p.y,p.z,1+hash1(z*2)*.7,shrubCol)}
     }
   }
-}
 
+  // Keep the horizon deep, but do not let identical roadside objects dominate every biome.
+  pushMountainRange(b,vz);
+  if(env!=='mountain')for(let i=0;i<16;i++){const z=vz+420+i*70,side=i%2?-1:1;pushPyramid(b,side*(90+hash1(i)*90),-8,z,70+hash1(i*2)*55,18+hash1(i*3)*18,mixColor(farGroundCol,groundCol,.25),.55)}
+
+  // Near layer: mountain/country keep utility infrastructure; city uses urban lighting instead.
+  const nearStep=quality<.82?12:8;let prevPoleP1=null,prevPoleP2=null;
+  for(let z=Math.floor((vz+10)/nearStep)*nearStep;z<vz+180;z+=nearStep){
+    const id=Math.floor(z/nearStep);sampleRoad(z,rs0);
+    for(const side of[-1,1]){const gp=roadPoint(rs0,side*(ROAD_HALF_WIDTH+ROAD_SHOULDER+.6+hash1(id*3.1+side)*1.4),0,p0);pushGrass(b,gp.x,gp.y,gp.z,.8+hash1(id*2.3)*.6,grassCol);if(env!=='city'&&id%2===0){const sp=roadPoint(rs0,side*(ROAD_HALF_WIDTH+ROAD_SHOULDER+1.2+hash1(id*4.1+side)*2),0,p1);pushShrub(b,sp.x,sp.y,sp.z,.7+hash1(id*1.8)*.5,shrubCol)}}
+    if(id%7===2){const side=id%14===2?1:-1,sp=sidePosition(z,side,1.2,p0);pushSign(b,sp.x,sp.y,sp.z,env==='mountain'?'curve':env==='city'?'route':id%21===2?'speed':'route',.9)}
+    if(env!=='city'&&id%3===0){const pp=sidePosition(z,1,2.2,p0);pushPole(b,pp.x,pp.y,pp.z,1,night,1);const wh=3.7,p1w=roadPoint(rs0,ROAD_HALF_WIDTH+1.68,wh,{}),p2w=roadPoint(rs0,ROAD_HALF_WIDTH+2.72,wh,{});if(prevPoleP1){pushWire(b,prevPoleP1,p1w,.35);pushWire(b,prevPoleP2,p2w,.35)}prevPoleP1=p1w;prevPoleP2=p2w}
+  }
+
+  // Mid layer is deliberately sparse in country/coast and dense in city.
+  const midStep=quality<.82?26:18;
+  for(let z=Math.floor((vz+25)/midStep)*midStep;z<vz+480;z+=midStep){
+    const id=Math.floor(z/midStep);sampleRoad(z,rs0);sampleRoad(z+midStep,rs1);
+    if((env==='country'||env==='mountain')&&id%2===0){const side=id%4===0?-1:1;pushField(b,rs0,rs1,side>0?ROAD_HALF_WIDTH+3.5:-(ROAD_HALF_WIDTH+28),side>0?ROAD_HALF_WIDTH+28:-(ROAD_HALF_WIDTH+3.5),fieldCol,ridgeCol);pushFence(b,rs0,rs1,side*(ROAD_HALF_WIDTH+2.8),.8,fenceCol)}
+    if((env==='mountain'||env==='country')&&id%5===1)pushRetainingWall(b,rs0,rs1,id%10===1?-1:1,0,env==='mountain'?3.2:1.5,wallCol);
+    if(env!=='city'&&id%4===1)for(const side of[-1,1]){const tp=sidePosition(z+hash1(id)*8,side,3.5+hash1(id*5.1+side*2.3)*14,p0);pushTree(b,tp.x,tp.y,tp.z,.85+hash1(id*3.9)*.9,treeCol,env==='mountain'?0:id%3===0?1:2)}
+  }
+}
 function buildRain(){
   rainBuilder.reset();if(state.weather!=='rain')return;
   const c=state.camera,forwardX=Math.sin(c.yaw),forwardZ=Math.cos(c.yaw),rightX=Math.cos(c.yaw),rightZ=-Math.sin(c.yaw),col=rgb('#bcd3df'),count=quality<.82?48:76;
