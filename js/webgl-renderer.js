@@ -425,6 +425,28 @@ function buildGroundAndShoulderTerrain(){
     pushGroundTerrain(b,rs0,rs1,sw,sw+18,0,-0.6,groundCol);
     pushGroundTerrain(b,rs0,rs1,sw+18,sw+80,-0.6,-2.2,farGroundCol);
   }
+  buildTerrainVariation(b,vz,env,groundCol,farGroundCol);
+}
+
+function buildTerrainVariation(b,vz,env,groundCol,farGroundCol){
+  // Extend terrain far beyond the roadside strip so the player sees a landscape, not a green plane.
+  const step=18;
+  for(let z=Math.floor((vz+20)/step)*step;z<vz+650;z+=step){
+    sampleRoad(z,rs0);sampleRoad(z+step,rs1);
+    for(const side of[-1,1]){
+      const seed=Math.floor(z/step)*1.73+side*9.1;
+      const inner=ROAD_HALF_WIDTH+ROAD_SHOULDER+18;
+      const outer=inner+90+hash1(seed)*85;
+      const drop=1.2+hash1(seed*2.7)*4.5;
+      const col=hash1(seed*3.1)>.58?mixColor(groundCol,farGroundCol,.35):groundCol;
+      pushGroundTerrain(b,rs0,rs1,side*inner,side*outer,-.45,-drop,col);
+      if(hash1(seed*4.4)>.35){
+        const lat=side*(inner+10+hash1(seed*5.2)*55);
+        const p=roadPoint(rs0,lat,-.42,p0);
+        pushBox(b,p.x,p.y,p.z,2.5+hash1(seed)*6,.06,3+hash1(seed*2)*8,mixColor(col,[1,1,1],.10),.7);
+      }
+    }
+  }
 }
 
 function buildScenery(){
@@ -594,6 +616,24 @@ export function renderWorld(){
   const pal=palettes[state.time][state.weather],base=mixColor(rgb(pal[0]),rgb(pal[1]),.38),tunnel=state.world.feature==='tunnel'?state.world.featureAmount:0;
   const clear=tunnel>0?mixColor(base,rgb('#090b0d'),tunnel*.90):base;
   gl.clearColor(clear[0],clear[1],clear[2],1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+
+  // Procedural sky: animated cloud masses, horizon haze and a time-of-day sun glow.
+  gl.disable(gl.DEPTH_TEST);
+  gl.useProgram(skyProgram);
+  const top=rgb(pal[0]),horizon=rgb(pal[1]);
+  const sun=rgb(state.time==='night'?'#7d91b7':state.time==='sunset'?'#ffb16f':'#fff1cf');
+  const cloud=rgb(state.time==='night'?'#384653':state.time==='sunset'?'#d5aaa0':'#f5f7f3');
+  const cloudShadow=rgb(state.weather==='fog'?'#9ca9aa':state.time==='night'?'#1c2631':state.time==='sunset'?'#766d79':'#aeb9bd');
+  gl.uniform3fv(gl.getUniformLocation(skyProgram,'uTop'),top);
+  gl.uniform3fv(gl.getUniformLocation(skyProgram,'uHorizon'),horizon);
+  gl.uniform3fv(gl.getUniformLocation(skyProgram,'uSunColor'),sun);
+  gl.uniform3fv(gl.getUniformLocation(skyProgram,'uCloud'),cloud);
+  gl.uniform3fv(gl.getUniformLocation(skyProgram,'uCloudShadow'),cloudShadow);
+  gl.uniform1f(gl.getUniformLocation(skyProgram,'uWeatherMix'),state.weather==='clear'?0:state.weather==='cloudy'?.55:state.weather==='fog'?.9:.72);
+  gl.uniform1f(gl.getUniformLocation(skyProgram,'uWorldTime'),state.worldTime);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+  gl.enable(gl.DEPTH_TEST);
+
   setUniforms();buildRoad();
   const key=sceneKey();if(key!==lastSceneryKey){buildScenery();sceneryCount=uploadBuffer(sceneryBuffer,sceneryBuilder,gl.DYNAMIC_DRAW);lastSceneryKey=key}
   buildRain();
