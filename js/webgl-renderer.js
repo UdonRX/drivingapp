@@ -576,6 +576,33 @@ function buildRain(){
   }
 }
 
+function buildEmergencyScenery(){
+  sceneryBuilder.reset();
+  const b=sceneryBuilder,vz=state.vehicle.z,env=state.environment,night=state.time==='night';
+  const ground=rgb(night?'#18251d':env==='city'?'#4a5053':env==='country'?'#526f3f':env==='coast'?'#52685c':'#31583b');
+  const accent=rgb(night?'#26333a':env==='city'?'#737b80':env==='country'?'#6f8f4d':env==='coast'?'#b8ad87':'#6b675d');
+  const step=32;
+  for(let z=Math.floor((vz+8)/step)*step;z<vz+520;z+=step){
+    sampleRoad(z,rs0);sampleRoad(z+step,rs1);
+    roadQuad(b,rs0,rs1,-ROAD_HALF_WIDTH-1.5,-ROAD_HALF_WIDTH-20,-.15,ground,.9);
+    roadQuad(b,rs0,rs1,ROAD_HALF_WIDTH+1.5,ROAD_HALF_WIDTH+20,-.15,ground,.9);
+    if(env==='country'){
+      const side=(Math.floor(z/step)%2)?1:-1;
+      pushField(b,rs0,rs1,side*(ROAD_HALF_WIDTH+3),side*(ROAD_HALF_WIDTH+28),ground,accent);
+    }else if(env==='coast'){
+      const side=Math.floor(z/step)%2?1:-1;
+      pushCoastBeach(b,rs0,rs1,side,4,24,accent,rgb(night?'#123447':'#3188a8'));
+    }else if(env==='city'){
+      for(const side of[-1,1]){
+        const p=sidePosition(z,side,6,p0);
+        pushBox(b,p.x,p.y,p.z,7,10,7,rgb(night?'#20272d':'#68747b'),.9);
+      }
+    }else{
+      const side=Math.floor(z/step)%2?1:-1;
+      pushRetainingWall(b,rs0,rs1,side,0,2.2,accent);
+    }
+  }
+}
 function sceneKey(){return`${Math.floor(state.vehicle.z/8)}|${state.environment}|${state.time}|${state.weather}|${quality}`}
 function setUniforms(){
   const c=state.camera,aspect=Math.max(.2,state.width/Math.max(1,state.height));
@@ -638,7 +665,7 @@ export function renderWorld(){
   gl.enable(gl.DEPTH_TEST);
 
   setUniforms();buildRoad();
-  const key=sceneKey();if(key!==lastSceneryKey){buildScenery();sceneryCount=uploadBuffer(sceneryBuffer,sceneryBuilder,gl.DYNAMIC_DRAW);lastSceneryKey=key}
+  const key=sceneKey();if(key!==lastSceneryKey){try{buildScenery()}catch(sceneryError){buildEmergencyScenery()}sceneryCount=uploadBuffer(sceneryBuffer,sceneryBuilder,gl.DYNAMIC_DRAW);lastSceneryKey=key}
   buildRain();
   const roadCount=uploadBuffer(roadBuffer,roadBuilder,gl.DYNAMIC_DRAW),rainCount=uploadBuffer(rainBuffer,rainBuilder,gl.DYNAMIC_DRAW);
   drawBuffer(sceneryBuffer,sceneryCount);drawBuffer(roadBuffer,roadCount);drawBuffer(rainBuffer,rainCount);
