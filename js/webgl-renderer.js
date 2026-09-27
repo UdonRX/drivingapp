@@ -535,7 +535,7 @@ function buildScenery(){
           pushField(b,rs0,rs1,side*(ROAD_HALF_WIDTH+3),side*(ROAD_HALF_WIDTH+30),fieldCol,ridgeCol);
           if(id%3===0)pushTree(b,p.x,p.y,p.z,1.2,treeCol,1);
         }else if(env==='coast'){
-          pushCoastBeach(b,rs0,rs1,side,4,30,sandCol||rgb('#b8ad87'),rgb('#3188a8'));
+          pushCoastBeach(b,rs0,rs1,side,4,30,rgb('#b8ad87'),rgb('#3188a8'));
         }else{
           pushRetainingWall(b,rs0,rs1,side,0,2.5,wallCol);
           if(id%3===0)pushTree(b,p.x,p.y,p.z,1.4,treeCol,0);
