@@ -474,47 +474,73 @@ function buildScenery(){
   const fenceCol=rgb(night?'#3d454a':'#80888c');
   const wallCol=rgb(night?'#2b3136':'#71797e');
 
-  // Each environment gets its own visual language: terrain, architecture, density and landmarks.
-  if(env==='mountain'){
-    const rock=rgb(night?'#252b2b':'#66675e'),oldWall=rgb(night?'#2a2925':'#7b6750');
-    for(let z=Math.floor((vz+24)/20)*20;z<vz+520;z+=20){
-      sampleRoad(z,rs0);sampleRoad(z+20,rs1);const id=Math.floor(z/20),side=id%3===0?-1:1;
-      if(id%2===0)pushRetainingWall(b,rs0,rs1,side,0,1.8+hash1(z)*2.8,rock);
-      if(id%5===1){const p=sidePosition(z,side,6+hash1(z)*5,p0);pushBuilding(b,p.x,p.y,p.z,4.5+hash1(z)*2,2.4+hash1(z*2)*1.5,4,oldWall,houseRoof,0)}
-      if(id%4===0){const p=sidePosition(z,-side,7+hash1(z*2)*9,p0);pushTree(b,p.x,p.y,p.z,1.1+hash1(z*3)*.8,treeCol,0)}
+  // Environment-specific scenery. Keep a guaranteed fallback so a single optional prop can never blank the whole world.
+  try {
+    // Each environment gets its own visual language: terrain, architecture, density and landmarks.
+    if(env==='mountain'){
+      const rock=rgb(night?'#252b2b':'#66675e'),oldWall=rgb(night?'#2a2925':'#7b6750');
+      for(let z=Math.floor((vz+24)/20)*20;z<vz+520;z+=20){
+        sampleRoad(z,rs0);sampleRoad(z+20,rs1);const id=Math.floor(z/20),side=id%3===0?-1:1;
+        if(id%2===0)pushRetainingWall(b,rs0,rs1,side,0,1.8+hash1(z)*2.8,rock);
+        if(id%5===1){const p=sidePosition(z,side,6+hash1(z)*5,p0);pushBuilding(b,p.x,p.y,p.z,4.5+hash1(z)*2,2.4+hash1(z*2)*1.5,4,oldWall,houseRoof,0)}
+        if(id%4===0){const p=sidePosition(z,-side,7+hash1(z*2)*9,p0);pushTree(b,p.x,p.y,p.z,1.1+hash1(z*3)*.8,treeCol,0)}
+      }
+    }else if(env==='country'){
+      const pond=rgb(night?'#10262a':'#4b91a0'),mud=rgb(night?'#1c241b':'#6d6749'),shed=rgb(night?'#25282a':'#817664'),roof=rgb(night?'#1c2024':'#4d4b45');
+      for(let z=Math.floor((vz+30)/30)*30;z<vz+560;z+=30){
+        sampleRoad(z,rs0);sampleRoad(z+30,rs1);const id=Math.floor(z/30),side=id%2?-1:1;
+        if(id%3===0)pushField(b,rs0,rs1,side*(ROAD_HALF_WIDTH+3),side*(ROAD_HALF_WIDTH+34),fieldCol,ridgeCol);
+        if(id%7===2)pushPond(b,rs0,rs1,side,5+hash1(id)*8,18+hash1(id*2)*22,pond,mud);
+        if(id%6===1){const p=sidePosition(z,side,10+hash1(id)*12,p0);pushBuilding(b,p.x,p.y,p.z,5+hash1(id)*3,2.5+hash1(id*2)*1.6,5,shed,roof,2)}
+        if(id%9===4){const p=sidePosition(z,side,4.5,p0);pushTree(b,p.x,p.y,p.z,1.5,treeCol,1)}
+      }
+    }else if(env==='city'){
+      const sidewalk=rgb(night?'#3a4045':'#85888a');
+      for(let z=Math.floor((vz+12)/12)*12;z<vz+500;z+=12){
+        sampleRoad(z,rs0);const id=Math.floor(z/12),dense=id%5!==0;
+        for(const side of[-1,1]){
+          const off=dense?5+hash1(id*2.7+side)*4:10+hash1(id*4.1)*10,p=sidePosition(z,side,off,p0),pav=roadPoint(rs0,side*(ROAD_HALF_WIDTH+2),.01,p1);
+          pushBox(b,pav.x,pav.y,pav.z,3.2,.08,12,sidewalk,.8);
+          if(dense){
+            pushCityBlock(b,p.x,p.y,p.z,5+hash1(id*5.2)*6,7+hash1(id*3.1+side)*15,6+hash1(id*7.3)*5,night);
+            if(id%3===0){const q=roadPoint(rs0,side*(ROAD_HALF_WIDTH+2.45),0,p1);pushPerson(b,q.x,q.y,q.z,.9,hash1(id+side)>.5?rgb('#3e596d'):rgb('#6a4c4a'));if(id%6===0)pushPerson(b,q.x+side*.8,q.y,q.z+1.2,.82,rgb('#526344'))}
+          }
+        }
+        if(id%2===0){const lp=sidePosition(z,1,1.6,p0);pushStreetLamp(b,lp.x,lp.y,lp.z,1,night)}
+      }
+      for(let i=0;i<12;i++){const z=vz+150+i*34,side=i%2?-1:1,p=sidePosition(z,side,48+hash1(i)*55,p0);pushCityBlock(b,p.x,p.y,p.z,10+hash1(i)*10,24+hash1(i*2)*35,10+hash1(i*3)*8,night)}
+    }else if(env==='coast'){
+      const water=rgb(night?'#0d3143':state.time==='sunset'?'#3f7185':'#3188a8'),sand=rgb(night?'#2b3430':'#b8ad87'),rock=rgb(night?'#20282a':'#65655b');
+      for(let z=Math.floor((vz+20)/20)*20;z<vz+700;z+=20){
+        sampleRoad(z,rs0);sampleRoad(z+20,rs1);const side=Math.floor(z/80)%2===0?1:-1;
+        if(Math.floor(z/80)%3===0)pushCoastBeach(b,rs0,rs1,side,4,28+hash1(z)*18,sand,water);
+        else{pushCoastCliff(b,rs0,rs1,side,4,2+hash1(z)*2.5,rock,grassCol);pushCoastBeach(b,rs0,rs1,-side,14,18,sand,water)}
+        if(Math.floor(z/20)%3===0){const p=sidePosition(z,side,2,p0);pushBox(b,p.x,p.y,p.z,.10,1,.10,rgb('#d9d0b0'))}
+        if(Math.floor(z/20)%4===1){const p=sidePosition(z,-side,5+hash1(z)*8,p0);pushShrub(b,p.x,p.y,p.z,1+hash1(z*2)*.7,shrubCol)}
+      }
     }
-  }else if(env==='country'){
-    const pond=rgb(night?'#10262a':'#4b91a0'),mud=rgb(night?'#1c241b':'#6d6749'),shed=rgb(night?'#25282a':'#817664'),roof=rgb(night?'#1c2024':'#4d4b45');
-    for(let z=Math.floor((vz+30)/30)*30;z<vz+560;z+=30){
-      sampleRoad(z,rs0);sampleRoad(z+30,rs1);const id=Math.floor(z/30),side=id%2?-1:1;
-      if(id%3===0)pushField(b,rs0,rs1,side*(ROAD_HALF_WIDTH+3),side*(ROAD_HALF_WIDTH+34),fieldCol,ridgeCol);
-      if(id%7===2)pushPond(b,rs0,rs1,side,5+hash1(id)*8,18+hash1(id*2)*22,pond,mud);
-      if(id%6===1){const p=sidePosition(z,side,10+hash1(id)*12,p0);pushBuilding(b,p.x,p.y,p.z,5+hash1(id)*3,2.5+hash1(id*2)*1.6,5,shed,roof,2)}
-      if(id%9===4){const p=sidePosition(z,side,4.5,p0);pushTree(b,p.x,p.y,p.z,1.5,treeCol,1)}
-    }
-  }else if(env==='city'){
-    const sidewalk=rgb(night?'#3a4045':'#85888a');
-    for(let z=Math.floor((vz+12)/12)*12;z<vz+500;z+=12){
-      sampleRoad(z,rs0);const id=Math.floor(z/12),dense=id%5!==0;
+  
+  
+  } catch(environmentError) {
+    // Safe fallback: these primitives are shared by all environments and guarantee visible scenery.
+    for(let z=Math.floor((vz+20)/28)*28;z<vz+420;z+=28){
+      sampleRoad(z,rs0);
+      const id=Math.floor(z/28);
       for(const side of[-1,1]){
-        const off=dense?5+hash1(id*2.7+side)*4:10+hash1(id*4.1)*10,p=sidePosition(z,side,off,p0),pav=roadPoint(rs0,side*(ROAD_HALF_WIDTH+2),.01,p1);
-        pushBox(b,pav.x,pav.y,pav.z,3.2,.08,12,sidewalk,.8);
-        if(dense){
-          pushCityBlock(b,p.x,p.y,p.z,5+hash1(id*5.2)*6,7+hash1(id*3.1+side)*15,6+hash1(id*7.3)*5,night);
-          if(id%3===0){const q=roadPoint(rs0,side*(ROAD_HALF_WIDTH+2.45),0,p1);pushPerson(b,q.x,q.y,q.z,.9,hash1(id+side)>.5?rgb('#3e596d'):rgb('#6a4c4a'));if(id%6===0)pushPerson(b,q.x+side*.8,q.y,q.z+1.2,.82,rgb('#526344'))}
+        const p=sidePosition(z,side,5+hash1(id*2+side)*9,p0);
+        if(env==='city'){
+          pushBox(b,p.x,p.y,p.z,7+hash1(id)*4,9+hash1(id*3)*13,6+hash1(id*5)*3,night?rgb('#202830'):rgb('#69747b'),.95);
+          if(id%2===0){const q=sidePosition(z,side,2.5,p1);pushStreetLamp(b,q.x,q.y,q.z,1,night)}
+        }else if(env==='country'){
+          pushField(b,rs0,rs1,side*(ROAD_HALF_WIDTH+3),side*(ROAD_HALF_WIDTH+30),fieldCol,ridgeCol);
+          if(id%3===0)pushTree(b,p.x,p.y,p.z,1.2,treeCol,1);
+        }else if(env==='coast'){
+          pushCoastBeach(b,rs0,rs1,side,4,30,sandCol||rgb('#b8ad87'),rgb('#3188a8'));
+        }else{
+          pushRetainingWall(b,rs0,rs1,side,0,2.5,wallCol);
+          if(id%3===0)pushTree(b,p.x,p.y,p.z,1.4,treeCol,0);
         }
       }
-      if(id%2===0){const lp=sidePosition(z,1,1.6,p0);pushStreetLamp(b,lp.x,lp.y,lp.z,1,night)}
-    }
-    for(let i=0;i<12;i++){const z=vz+150+i*34,side=i%2?-1:1,p=sidePosition(z,side,48+hash1(i)*55,p0);pushCityBlock(b,p.x,p.y,p.z,10+hash1(i)*10,24+hash1(i*2)*35,10+hash1(i*3)*8,night)}
-  }else if(env==='coast'){
-    const water=rgb(night?'#0d3143':state.time==='sunset'?'#3f7185':'#3188a8'),sand=rgb(night?'#2b3430':'#b8ad87'),rock=rgb(night?'#20282a':'#65655b');
-    for(let z=Math.floor((vz+20)/20)*20;z<vz+700;z+=20){
-      sampleRoad(z,rs0);sampleRoad(z+20,rs1);const side=Math.floor(z/80)%2===0?1:-1;
-      if(Math.floor(z/80)%3===0)pushCoastBeach(b,rs0,rs1,side,4,28+hash1(z)*18,sand,water);
-      else{pushCoastCliff(b,rs0,rs1,side,4,2+hash1(z)*2.5,rock,grassCol);pushCoastBeach(b,rs0,rs1,-side,14,18,sand,water)}
-      if(Math.floor(z/20)%3===0){const p=sidePosition(z,side,2,p0);pushBox(b,p.x,p.y,p.z,.10,1,.10,rgb('#d9d0b0'))}
-      if(Math.floor(z/20)%4===1){const p=sidePosition(z,-side,5+hash1(z)*8,p0);pushShrub(b,p.x,p.y,p.z,1+hash1(z*2)*.7,shrubCol)}
     }
   }
 
