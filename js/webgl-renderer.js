@@ -117,7 +117,18 @@ function buildRoad(){
   const step=quality<.82?ROAD_SEGMENT*1.5:ROAD_SEGMENT;
   for(let z=start;z<end;z+=step){
     const z1=Math.min(end,z+step);sampleRoad(z,rs0);sampleRoad(z1,rs1);
-    roadQuad(roadBuilder,rs0,rs1,-ROAD_HALF_WIDTH,ROAD_HALF_WIDTH,0,road);
+    // City uses a much wider multi-lane carriageway while the other environments keep the rural two-lane scale.
+    if(state.environment==='city'){
+      const cityRoad=rgb(night?'#171b20':'#34383c');
+      roadQuad(roadBuilder,rs0,rs1,-8.6,8.6,0,cityRoad);
+      roadQuad(roadBuilder,rs0,rs1,-8.6,-8.45,.018,white);
+      roadQuad(roadBuilder,rs0,rs1,8.45,8.6,.018,white);
+      roadQuad(roadBuilder,rs0,rs1,-5.75,-5.68,.018,white);
+      roadQuad(roadBuilder,rs0,rs1,5.68,5.75,.018,white);
+      if(dash){roadQuad(roadBuilder,rs0,rs1,-2.9,-2.82,.018,white);roadQuad(roadBuilder,rs0,rs1,2.82,2.9,.018,white)}
+    }else{
+      roadQuad(roadBuilder,rs0,rs1,-ROAD_HALF_WIDTH,ROAD_HALF_WIDTH,0,road);
+    }
     roadQuad(roadBuilder,rs0,rs1,-ROAD_HALF_WIDTH-ROAD_SHOULDER,-ROAD_HALF_WIDTH,.002,shoulder);
     roadQuad(roadBuilder,rs0,rs1,ROAD_HALF_WIDTH,ROAD_HALF_WIDTH+ROAD_SHOULDER,.002,shoulder);
     roadQuad(roadBuilder,rs0,rs1,-ROAD_HALF_WIDTH+.08,-ROAD_HALF_WIDTH+.14,.018,white);
@@ -484,6 +495,10 @@ function buildScenery(){
         if(id%2===0)pushRetainingWall(b,rs0,rs1,side,0,1.8+hash1(z)*2.8,rock);
         if(id%5===1){const p=sidePosition(z,side,6+hash1(z)*5,p0);pushBuilding(b,p.x,p.y,p.z,4.5+hash1(z)*2,2.4+hash1(z*2)*1.5,4,oldWall,houseRoof,0)}
         if(id%4===0){const p=sidePosition(z,-side,7+hash1(z*2)*9,p0);pushTree(b,p.x,p.y,p.z,1.1+hash1(z*3)*.8,treeCol,0)}
+        if(id%3===0){
+          const mp=sidePosition(z,side,1.0,p0);
+          pushBox(b,mp.x,mp.y,mp.z,.10,.65,.10,rgb('#d9d1ad'),.9);
+        }
       }
     }else if(env==='country'){
       const pond=rgb(night?'#10262a':'#4b91a0'),mud=rgb(night?'#1c241b':'#6d6749'),shed=rgb(night?'#25282a':'#817664'),roof=rgb(night?'#1c2024':'#4d4b45');
@@ -493,6 +508,12 @@ function buildScenery(){
         if(id%7===2)pushPond(b,rs0,rs1,side,5+hash1(id)*8,18+hash1(id*2)*22,pond,mud);
         if(id%6===1){const p=sidePosition(z,side,10+hash1(id)*12,p0);pushBuilding(b,p.x,p.y,p.z,5+hash1(id)*3,2.5+hash1(id*2)*1.6,5,shed,roof,2)}
         if(id%9===4){const p=sidePosition(z,side,4.5,p0);pushTree(b,p.x,p.y,p.z,1.5,treeCol,1)}
+        if(id%11===5){pushBusStop(b,rs0,side)}
+        if(id%17===8){
+          const junction=rgb(night?'#b8c0bd':'#d7d9d4');
+          roadQuad(roadBuilder,rs0,rs1,ROAD_HALF_WIDTH+1.4,ROAD_HALF_WIDTH+1.65,.026,junction,.72);
+          roadQuad(roadBuilder,rs0,rs1,-ROAD_HALF_WIDTH-1.65,-ROAD_HALF_WIDTH-1.4,.026,junction,.72);
+        }
       }
     }else if(env==='city'){
       const sidewalk=rgb(night?'#3a4045':'#85888a');
@@ -507,6 +528,24 @@ function buildScenery(){
           }
         }
         if(id%2===0){const lp=sidePosition(z,1,1.6,p0);pushStreetLamp(b,lp.x,lp.y,lp.z,1,night)}
+        // Elevated expressway / overpass: a clear urban landmark every few blocks.
+        if(id%24===6){
+          const center=roadPoint(rs0,0,5.4,p0);
+          pushBox(b,center.x,center.y,center.z,18,.42,7,rgb(night?'#242a30':'#596167'),.95);
+          for(const side of[-1,1]){
+            const cp=roadPoint(rs0,side*6.2,0,p1);
+            pushBox(b,cp.x,cp.y,cp.z,.55,5.3,.55,rgb(night?'#30363b':'#70777b'),.9);
+          }
+        }
+        // Crosswalk and signalized intersection.
+        if(id%30===12){
+          for(let k=-3;k<=3;k++){const lat=k*1.15;roadQuad(roadBuilder,rs0,rs1,lat-.22,lat+.22,.028,rgb('#e5e7e4'),.9)}
+          for(const side of[-1,1]){
+            const sp=roadPoint(rs0,side*7.1,0,p1);
+            pushBox(b,sp.x,sp.y,sp.z,.12,3.5,.12,rgb('#4b5256'),.9);
+            pushBox(b,sp.x,sp.y+3.15,sp.z,.45,.55,.45,rgb('#d62f32'),1);
+          }
+        }
       }
       for(let i=0;i<12;i++){const z=vz+150+i*34,side=i%2?-1:1,p=sidePosition(z,side,48+hash1(i)*55,p0);pushCityBlock(b,p.x,p.y,p.z,10+hash1(i)*10,24+hash1(i*2)*35,10+hash1(i*3)*8,night)}
     }else if(env==='coast'){
