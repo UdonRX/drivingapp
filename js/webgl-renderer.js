@@ -14,6 +14,23 @@ void main(){
   vColor=aColor;
   vDistance=distance(aPosition,uCameraPos);
 }`;
+const SKY_VS=`#version 300 es
+precision highp float;
+const vec2 P[3]=vec2[3](vec2(-1.0,-1.0),vec2(3.0,-1.0),vec2(-1.0,3.0));
+out vec2 vUv;
+void main(){vUv=P[gl_VertexID]*0.5+0.5;gl_Position=vec4(P[gl_VertexID],0.0,1.0);}
+`;
+const SKY_FS=`#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform vec3 uTop,uHorizon,uSunColor,uCloud,uCloudShadow;
+uniform float uWeatherMix,uWorldTime;
+out vec4 outColor;
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
+float fbm(vec2 p){float v=0.0,a=.5;for(int i=0;i<4;i++){v+=noise(p)*a;p=p*2.02+13.7;a*=.5;}return v;}
+void main(){float y=clamp(vUv.y,0.0,1.0);vec3 sky=mix(uHorizon,uTop,pow(y,.62));float sunSide=1.0-smoothstep(0.0,.72,length(vUv-vec2(.72,.72)));sky+=uSunColor*sunSide*.20*(1.0-uWeatherMix*.7);vec2 cp=vUv*vec2(3.2,1.35)+vec2(uWorldTime*.0022,0.0);float cloud=smoothstep(.53,.70,fbm(cp*1.25))*smoothstep(.12,.58,y)*(1.0-uWeatherMix*.45);sky=mix(sky,mix(uCloudShadow,uCloud,cloud),cloud*.58);sky=mix(sky,uCloudShadow,smoothstep(0.0,.34,1.0-y)*uWeatherMix*.22);outColor=vec4(sky,1.0);}
+`;
 const FS=`#version 300 es
 precision highp float;
 in vec3 vColor;
@@ -46,7 +63,7 @@ const sceneryBuilder=new MeshBuilder(850000);
 const rainBuilder=new MeshBuilder(2400);
 const rs0={},rs1={},p0={},p1={},p2={},p3={};
 const matP=new Float32Array(16),matV=new Float32Array(16),matVP=new Float32Array(16);
-let gl,program,roadBuffer,sceneryBuffer,rainBuffer,lastSceneryKey='',quality=1,canvasRef,sceneryCount=0;
+let gl,program,skyProgram,skyBuffer,roadBuffer,sceneryBuffer,rainBuffer,lastSceneryKey='',quality=1,canvasRef,sceneryCount=0;
 
 function rgb(hex){
   const h=hex.replace('#','');const n=parseInt(h.length===3?h.split('').map(x=>x+x).join(''):h,16);
@@ -75,6 +92,7 @@ function multiply(out,a,b){
   for(let c=0;c<4;c++)for(let r=0;r<4;r++)out[c*4+r]=a[0*4+r]*b[c*4+0]+a[1*4+r]*b[c*4+1]+a[2*4+r]*b[c*4+2]+a[3*4+r]*b[c*4+3];
 }
 function shader(type,source){const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s)||'shader compile failed');return s}
+function createSkyProgram(){const p=gl.createProgram();gl.attachShader(p,shader(gl.VERTEX_SHADER,SKY_VS));gl.attachShader(p,shader(gl.FRAGMENT_SHADER,SKY_FS));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p)||'sky program link failed');return p}
 function createProgram(){const p=gl.createProgram();gl.attachShader(p,shader(gl.VERTEX_SHADER,VS));gl.attachShader(p,shader(gl.FRAGMENT_SHADER,FS));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p)||'program link failed');return p}
 function setupBuffer(buffer){gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,24,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,24,12)}
 function uploadBuffer(buffer,builder,usage=gl.DYNAMIC_DRAW){if(!builder.count)return 0;gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,builder.data.subarray(0,builder.count*6),usage);return builder.count}
@@ -296,27 +314,25 @@ function pushGroundTerrain(b,sA,sB,lat0,lat1,h0,h1,col){
 }
 
 function pushMountainRange(b,vz){
-  const night=state.time==='night', sunset=state.time==='sunset';
-  const baseCol=rgb(night?'#0e1921':sunset?'#524859':state.environment==='mountain'?'#3a5848':'#485d58');
-  const midCol=rgb(night?'#14232f':sunset?'#6c5b6b':state.environment==='mountain'?'#4d6f5c':'#5b756e');
-
-  // Layer 1: Far background mountains
-  for(let i=0;i<12;i++){
-    const z=vz+300+i*85;
-    const side=i%2===0?1:-1;
-    const offset=35+hash1(i*2.1,state.routeSeed)*60;
-    p0.x=side*offset; p0.y=-5; p0.z=z;
-    const w=35+hash1(i*3.7)*45, h=28+hash1(i*5.3)*38;
-    pushPyramid(b,p0.x,p0.y,p0.z,w,h,baseCol,0.78);
+  const night=state.time==='night', sunset=state.time==='sunset',env=state.environment;
+  const farCol=rgb(night?'#101a25':sunset?'#514b67':env==='mountain'?'#314f4a':'#4b625e');
+  const farLight=rgb(night?'#18283a':sunset?'#716277':env==='mountain'?'#49685b':'#61756e');
+  const midCol=rgb(night?'#17261f':sunset?'#5f5961':env==='mountain'?'#42644a':'#55705c');
+  const nearCol=rgb(night?'#14251b':env==='mountain'?'#31583b':'#426548');
+  for(let layer=0;layer<4;layer++){
+    const count=22,zBase=vz+220+layer*95;
+    for(let i=0;i<count;i++){
+      const z=zBase+i*(105+layer*16),side=(i+layer)%2?1:-1;
+      const x=side*(55+layer*24+hash1(i*4.7+layer*11,state.routeSeed)*120);
+      const w=70+hash1(i*2.1+layer)*90;
+      const h=(layer===0?28:layer===1?48:layer===2?72:92)+hash1(i*3.8+layer)*45;
+      const col=layer===0?nearCol:layer===1?midCol:layer===2?farLight:farCol;
+      pushPyramid(b,x,layer===0?-4:layer===1?-7:-10,z,w,h,col,.68+layer*.08);
+    }
   }
-  // Layer 2: Mid-distance rolling hills
-  for(let i=0;i<10;i++){
-    const z=vz+180+i*70;
-    const side=(i%2===1)?1:-1;
-    const offset=18+hash1(i*4.3,state.routeSeed)*35;
-    p0.x=side*offset; p0.y=-3; p0.z=z;
-    const w=22+hash1(i*1.9)*30, h=16+hash1(i*2.8)*22;
-    pushPyramid(b,p0.x,p0.y,p0.z,w,h,midCol,0.88);
+  for(let i=0;i<28;i++){
+    const z=vz+130+i*48,side=i%2?1:-1,x=side*(18+hash1(i*7.1)*48);
+    pushPyramid(b,x,-1.8,z,28+hash1(i*2.8)*44,8+hash1(i*5.6)*15,mixColor(nearCol,farCol,.35),.72);
   }
 }
 
@@ -434,7 +450,7 @@ function buildScenery(){
   pushMountainRange(b,vz);
 
   // NEAR LAYER (近景: 5m - 90m - Grass, Low Shrubs, Signs, Utility Poles & Power Lines)
-  const nearStep=quality<.82?14:10;
+  const nearStep=quality<.82?12:8;
   let prevPoleP1=null, prevPoleP2=null;
 
   for(let z=Math.floor((vz+10)/nearStep)*nearStep;z<vz+180;z+=nearStep){
@@ -481,7 +497,7 @@ function buildScenery(){
   }
 
   // MID LAYER (中景: 25m - 480m - Buildings, Rice Fields, Fences, Structures, Trees)
-  const midStep=quality<.82?32:22;
+  const midStep=quality<.82?26:18;
   for(let z=Math.floor((vz+25)/midStep)*midStep;z<vz+480;z+=midStep){
     const id=Math.floor(z/midStep);
     sampleRoad(z,rs0); sampleRoad(z+midStep,rs1);
@@ -562,7 +578,7 @@ function setUniforms(){
 export function initRenderer(canvas){
   canvasRef=canvas;gl=canvas.getContext('webgl2',{alpha:false,antialias:false,depth:true,powerPreference:'high-performance',desynchronized:true,preserveDrawingBuffer:false});
   if(!gl)throw new Error('WebGL2 is not available');
-  program=createProgram();roadBuffer=gl.createBuffer();sceneryBuffer=gl.createBuffer();rainBuffer=gl.createBuffer();
+  program=createProgram();skyProgram=createSkyProgram();skyBuffer=gl.createBuffer();roadBuffer=gl.createBuffer();sceneryBuffer=gl.createBuffer();rainBuffer=gl.createBuffer();
   gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);gl.clearDepth(1);resizeRenderer();
 }
 export function resizeRenderer(){
