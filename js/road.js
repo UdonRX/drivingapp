@@ -27,20 +27,52 @@ export const ROAD_SEGMENT=6;
 
 function baseX(z){
   const s=state.routeSeed;
-  return Math.sin((z+s*3.1)/520)*16.5+Math.sin((z+s*1.7)/1700)*26+Math.sin((z+s*.8)/255)*4.8;
+  const env=state.environment;
+  if(env==='country'){
+    // 里山の一本道。ほぼ一直線で、遠景がよく見える。
+    return Math.sin((z+s*1.1)/1250)*1.8+Math.sin((z+s*.7)/3300)*3.2;
+  }
+  if(env==='city'){
+    // 都市大通り。区画整理された長い直線を基本にする。
+    return Math.sin((z+s*1.4)/1800)*2.2+Math.sin((z+s*.8)/5200)*4.0;
+  }
+  if(env==='coast'){
+    // 海岸線。海側へ寄ったり離れたりする、見通しのよい緩いワインディング。
+    return Math.sin((z+s*2.0)/390)*9.5+Math.sin((z+s*.9)/980)*15.0+Math.sin((z+s*.4)/2300)*8.0;
+  }
+  // 山岳道路。短い周期の大きな左右振幅で峠道を作る。
+  const u=(z+s*1.7)/310;
+  const v=(z+s*.6)/780;
+  const hairpin=Math.sin(u)*20.0+Math.sin(u*.5+1.4)*13.0;
+  const broad=Math.sin(v)*18.0;
+  return hairpin+broad+Math.sin((z+s*.8)/150)*3.2;
 }
 function baseY(z){
   const s=state.routeSeed;
-  return Math.sin((z+s*2.4)/920)*7.2+Math.sin((z+s*.6)/420)*3.1+Math.sin((z+s*4.1)/1850)*5.4;
+  const env=state.environment;
+  if(env==='country')return Math.sin((z+s*.6)/1500)*1.8;
+  if(env==='city')return Math.sin((z+s*.8)/2400)*.9;
+  if(env==='coast')return Math.sin((z+s*1.2)/820)*3.2+Math.sin((z+s*.5)/1700)*2.2;
+  // 山は標高が上がるにつれて上り下りする。
+  return Math.sin((z+s*2.4)/620)*10.0+Math.sin((z+s*.6)/1180)*6.0+Math.sin((z+s*4.1)/1850)*5.4;
 }
 function explicitHill(z){
+  const env=state.environment;
+  if(env==='country')return Math.sin((z+state.routeSeed)/2100)*1.2;
+  if(env==='city')return Math.sin((z+state.routeSeed)/3000)*.7;
+  if(env==='coast')return Math.sin((z+state.routeSeed)/1050)*2.4;
   const cycle=5600,local=((z%cycle)+cycle)%cycle;
   const rise=smoothstep(500,1200,local)-smoothstep(1700,2450,local);
   const valley=smoothstep(2650,3250,local)-smoothstep(3900,4550,local);
-  return rise*7.5-valley*5.5;
+  return rise*12.5-valley*9.0;
 }
 function featureFor(z){
+  const env=state.environment;
   const cycle=5600,local=((z%cycle)+cycle)%cycle;
+  if(env==='mountain'&&local>900&&local<1900){
+    const amount=Math.min(smoothstep(900,1020,local),1-smoothstep(1780,1900,local));
+    return{type:'hairpin',amount,local,exit:0};
+  }
   if(local>1800&&local<2280){
     const amount=Math.min(smoothstep(1800,1900,local),1-smoothstep(2180,2280,local));
     return{type:'bridge',amount,local,exit:0};
