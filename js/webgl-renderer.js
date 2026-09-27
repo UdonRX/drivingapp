@@ -24,12 +24,12 @@ const SKY_FS=`#version 300 es
 precision highp float;
 in vec2 vUv;
 uniform vec3 uTop,uHorizon,uSunColor,uCloud,uCloudShadow;
-uniform float uWeatherMix,uWorldTime;
+uniform float uWeatherMix,uWorldTime,uYaw,uPitch;
 out vec4 outColor;
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
 float fbm(vec2 p){float v=0.0,a=.5;for(int i=0;i<4;i++){v+=noise(p)*a;p=p*2.02+13.7;a*=.5;}return v;}
-void main(){float y=clamp(vUv.y,0.0,1.0);vec3 sky=mix(uHorizon,uTop,pow(y,.62));float sunSide=1.0-smoothstep(0.0,.72,length(vUv-vec2(.72,.72)));sky+=uSunColor*sunSide*.20*(1.0-uWeatherMix*.7);vec2 cp=vUv*vec2(3.2,1.35)+vec2(uWorldTime*.0022,0.0);float cloud=smoothstep(.53,.70,fbm(cp*1.25))*smoothstep(.12,.58,y)*(1.0-uWeatherMix*.45);sky=mix(sky,mix(uCloudShadow,uCloud,cloud),cloud*.58);sky=mix(sky,uCloudShadow,smoothstep(0.0,.34,1.0-y)*uWeatherMix*.22);outColor=vec4(sky,1.0);}
+void main(){float y=clamp(vUv.y,0.0,1.0);vec3 sky=mix(uHorizon,uTop,pow(y,.62));float sunSide=1.0-smoothstep(0.0,.72,length(vUv-vec2(.72,.72)));sky+=uSunColor*sunSide*.20*(1.0-uWeatherMix*.7);vec2 cp=(vUv-0.5)*vec2(3.2,1.35)+vec2(uYaw*.42+uWorldTime*.0022,uPitch*.22);float cloud=smoothstep(.53,.70,fbm(cp*1.25))*smoothstep(.12,.58,y)*(1.0-uWeatherMix*.45);sky=mix(sky,mix(uCloudShadow,uCloud,cloud),cloud*.58);sky=mix(sky,uCloudShadow,smoothstep(0.0,.34,1.0-y)*uWeatherMix*.22);outColor=vec4(sky,1.0);}
 `;
 const FS=`#version 300 es
 precision highp float;
@@ -631,6 +631,8 @@ export function renderWorld(){
   gl.uniform3fv(gl.getUniformLocation(skyProgram,'uCloudShadow'),cloudShadow);
   gl.uniform1f(gl.getUniformLocation(skyProgram,'uWeatherMix'),state.weather==='clear'?0:state.weather==='cloudy'?.55:state.weather==='fog'?.9:.72);
   gl.uniform1f(gl.getUniformLocation(skyProgram,'uWorldTime'),state.worldTime);
+  gl.uniform1f(gl.getUniformLocation(skyProgram,'uYaw'),state.camera.yaw);
+  gl.uniform1f(gl.getUniformLocation(skyProgram,'uPitch'),state.camera.pitch);
   gl.drawArrays(gl.TRIANGLES,0,3);
   gl.enable(gl.DEPTH_TEST);
 
