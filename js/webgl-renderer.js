@@ -116,7 +116,7 @@ function buildRoad(){
   const start=v.z+ROAD_NEAR,end=v.z+ROAD_DRAW;
   const step=quality<.82?ROAD_SEGMENT*1.5:ROAD_SEGMENT;
   for(let z=start;z<end;z+=step){
-    const z1=Math.min(end,z+step);sampleRoad(z,rs0);sampleRoad(z1,rs1);
+    const z1=Math.min(end,z+step);sampleRoad(z,rs0);sampleRoad(z1,rs1);    const dash=Math.floor((z+4)/13)%2===0;
     // City uses a much wider multi-lane carriageway while the other environments keep the rural two-lane scale.
     if(state.environment==='city'){
       const cityRoad=rgb(night?'#171b20':'#34383c');
@@ -134,7 +134,6 @@ function buildRoad(){
     roadQuad(roadBuilder,rs0,rs1,-ROAD_HALF_WIDTH+.08,-ROAD_HALF_WIDTH+.14,.018,white);
     roadQuad(roadBuilder,rs0,rs1,ROAD_HALF_WIDTH-.14,ROAD_HALF_WIDTH-.08,.018,white);
     roadQuad(roadBuilder,rs0,rs1,-.15,-.07,.020,yellow);roadQuad(roadBuilder,rs0,rs1,.07,.15,.020,yellow);
-    const dash=Math.floor((z+4)/13)%2===0;
     if(dash){roadQuad(roadBuilder,rs0,rs1,-ROAD_HALF_WIDTH*.50-.035,-ROAD_HALF_WIDTH*.50+.035,.018,white);roadQuad(roadBuilder,rs0,rs1,ROAD_HALF_WIDTH*.50-.035,ROAD_HALF_WIDTH*.50+.035,.018,white)}
     if(wet&&z<v.z+260&&Math.floor(z/22)!==Math.floor(z1/22)){const sheen=rgb(night?'#26343d':'#3e4c51'),side=((Math.floor(z/22)&1)?-1:1)*ROAD_HALF_WIDTH*.43;roadQuad(roadBuilder,rs0,rs1,side-.22,side+.22,.024,sheen)}
     if(Math.floor(z/18)!==Math.floor(z1/18)){const zs=Math.ceil(z/18)*18;sampleRoad(zs-.10,rs0);sampleRoad(zs+.10,rs1);roadQuad(roadBuilder,rs0,rs1,-ROAD_HALF_WIDTH+.3,ROAD_HALF_WIDTH-.3,.012,seam)}
